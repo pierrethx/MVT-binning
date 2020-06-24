@@ -47,6 +47,8 @@ def cc_accretion(sourcedir,signal,var,target):
     image=ax.imshow(ston,cmap="cubehelix")
     fig.colorbar(image)
     plt.show()
+
+    quit()
     '''
 
     ## we replace each unusable value with 0. These unusable values would occur when 
@@ -176,7 +178,7 @@ def cc_accretion(sourcedir,signal,var,target):
 
 if __name__ == "__main__":
     sourcedir,signal,var=initialize()
-    target=200
+    target=5
     centarray,scalearray=cc_accretion(sourcedir,signal,var,target)
     np.save(sourcedir+"/centroids_of_the_image",centarray)
     np.save(sourcedir+"/scalelengths_first_iteration",scalearray)
