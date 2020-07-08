@@ -46,12 +46,25 @@ def closest_index(point,pointset,weightmap):
     else:
         return ind
 
+def scaled_closest(point,pointset,scaleset):
+    ## Closest point but for the index
+    pointsetlist=np.asarray(list(map(lambda x:[x[0],x[1]],pointset)))
+    pointvect=np.array([point[0],point[1]])
+    differences=pointsetlist-pointvect
+    sqrdistances=np.einsum('ij,ij->i',differences,differences)
+    return np.divide(sqrdistances,scaleset**2).argmin()
+
 def weighted_centroid(pointset,weightmap):
     ## We are calculating the weighted centroid for a set of points. Returns index and set mass.
     mass=sum(list(map(lambda x:weightmap[x[0]][x[1]],pointset)))
     indlist=list(map(lambda y:tuple(map(lambda x:weightmap[y[0]][y[1]]*x/mass,y)),pointset))
     ind=tuple(map(sum,zip(*indlist)))
     return ind, mass
+
+def geometric_center(pointset):
+    ## We are calculating the geometric center for a set of points. Returns index.
+    ind=tuple(map(lambda x:sum(x)/len(x),zip(*pointset)))
+    return ind
 
 
 def checktoadd(point,binn,weightmap,target,binmass):
@@ -162,6 +175,72 @@ def calculate_SN(binn,sigmap,varmap):
     for tupple in binn:
         numerator=numerator+sigmap[tupple[0]][tupple[1]]
         denominator=denominator+varmap[tupple[0]][tupple[1]]
-    return numerator/np.sqrt(denominator)
+    SN=numerator/np.sqrt(denominator)
+    return SN
+
+def calculate_signal(binn,sigmap):
+    numerator=0
+    for tupple in binn:
+        numerator=numerator+sigmap[tupple[0]][tupple[1]]
+    return numerator
+
+def calculate_scales(target,binlist,signal,var,wvt):
+    displayWVT=True
+
+    geomcentres=[]
+    scalelengths=[]
+    for bindex in range(len(binlist)):
+        if len(binlist[bindex])==0:
+            print("issue aaaahhhhhh")
+            geomcentres.append((0,0))
+            scalelengths.append(0)
+        else:
+            StoN=calculate_SN(binlist[bindex],signal,var)
+            sig=calculate_signal(binlist[bindex],signal)
+            geoc=geometric_center(binlist[bindex])
+            geomcentres.append(geoc)
+            
+            ## Define q to be some constant. Acc to Diehl&Statler, should not have effect
+            q=np.pi ## for circular bins, which is generally what we are trying to achieve
+            delta=np.sqrt(len(binlist[bindex])*target/(q*StoN))
+            scalelengths.append(delta)
+            for point in binlist[bindex]:
+                wvt[point[0]][point[1]]=sig
+    geocarray=np.array(geomcentres)
+    scalearray=np.array(scalelengths)
+    if displayWVT:
+        fig,ax=plt.subplots()
+        image=ax.imshow(wvt,cmap="cubehelix")
+        fig.colorbar(image)
+        plt.show()
+    return wvt,geocarray,scalearray
+
+def calculate_cvt(target,binlist,signal,var,wvt):
+    displayWVT=True
+
+    geomcentres=[]
+    scalelengths=[]
+    for bindex in range(len(binlist)):
+        if len(binlist[bindex])==0:
+            print("issue aaaahhhhhh")
+            geomcentres.append((0,0))
+            scalelengths.append(0)
+        else:
+            StoN=calculate_SN(binlist[bindex],signal,var)
+            sig=calculate_signal(binlist[bindex],signal)
+            geoc=geometric_center(binlist[bindex])
+            geomcentres.append(geoc)
+            
+            scalelengths.append(1)
+            for point in binlist[bindex]:
+                wvt[point[0]][point[1]]=sig
+    geocarray=np.array(geomcentres)
+    scalearray=np.array(scalelengths)
+    if displayWVT:
+        fig,ax=plt.subplots()
+        image=ax.imshow(wvt,cmap="cubehelix")
+        fig.colorbar(image)
+        plt.show()
+    return wvt,geocarray,scalearray
 
             
