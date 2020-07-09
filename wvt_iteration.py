@@ -7,6 +7,7 @@ import functions,bin_accretion
 import scipy.spatial as sp
 import time
 
+
 def initialize():
     enternew=False
 
@@ -32,7 +33,7 @@ def initialize():
     scalearray=np.load(scalelengths)
     return geocarray,scalearray
 
-def next_iteration(target,signal,var,geocarray,scalearray,wvt):
+def next_iteration(target,signal,var,geocarray,scalearray,wvt,displaywvt=False):
     ## generate all of the pixels to be slotted into a bin determined by the generators
     binlist=[ [] for _ in range(len(geocarray)) ]
     for y in range(len(signal)):
@@ -43,14 +44,14 @@ def next_iteration(target,signal,var,geocarray,scalearray,wvt):
             ## assign pixel to the generator with the minimum scaled length
             binlist[functions.scaled_closest(pixel,geocarray,scalearray)].append(pixel)
     print("image scanned")
-    wvt,geocarray2,scalearray2=functions.calculate_scales(target,binlist,signal,var,wvt)
+    wvt,geocarray2,scalearray2=functions.calculate_scales(target,binlist,signal,var,wvt,displaywvt)
     for r in range(len(binlist)):
         if binlist[r]==[]:
             geocarray2[r]=geocarray[r]
             scalearray2[r]=scalearray[r]
     return wvt,geocarray2,scalearray2
 
-def next_iteration2(target,signal,var,geocarray,scalearray,wvt):
+def next_iteration2(target,signal,var,geocarray,scalearray,wvt,displaywvt=False):
     ## generate all of the pixels to be slotted into a bin determined by the generators
     allpix=[(y,x) for y in range(signal.shape[0]) for x in range(signal.shape[1]) ]
     
@@ -93,7 +94,7 @@ def next_iteration2(target,signal,var,geocarray,scalearray,wvt):
     binlist=[ [] for _ in range(len(geocarray)) ]
     for i in range(len(allpix)):
         binlist[assign[i]].append(allpix[i])
-    wvt,geocarray2,scalearray2=functions.calculate_scales(target,binlist,signal,var,wvt)
+    wvt,geocarray2,scalearray2=functions.calculate_scales(target,binlist,signal,var,wvt,displaywvt)
     for r in range(len(binlist)):
         if len(binlist[r])==0:
             print("empty index"+str(r))
@@ -123,7 +124,7 @@ def append_validate(candidate,target,check):
     except:
         pass
 
-def iteration_func(target,signal,var,geocarray,scalearray,epsilon):
+def iteration_func(target,signal,var,geocarray,scalearray,epsilon,displaywvt=False):
     wvt=np.zeros_like(signal)
     target=5
     start=time.time()
@@ -136,7 +137,7 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon):
     while difference>epsilon:
         print("another iteration")
         wvt2=np.copy(wvt)
-        wvt,geocarray,scalearray=next_iteration2(target,signal,var,geocarray,scalearray,wvt)
+        wvt,geocarray,scalearray=next_iteration2(target,signal,var,geocarray,scalearray,wvt,displaywvt)
         
         difference=np.sqrt(np.sum((wvt-wvt2)**2))
         print("dif",difference)
@@ -144,14 +145,34 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon):
     print("elapsed time "+str(time.time()-start))
     return wvt
     
+def iteration_func0(target,signal,var,geocarray,scalearray,epsilon,displaywvt=False):
+    wvt=np.zeros_like(signal)
+    target=5
+    start=time.time()
+    ## have to manually kill terminal is does not converge
+    epsilon=10
+    difference=2*epsilon
+
     
+
+    while difference>epsilon:
+        print("another iteration")
+        wvt2=np.copy(wvt)
+        wvt,geocarray,scalearray=next_iteration(target,signal,var,geocarray,scalearray,wvt,displaywvt)
+        
+        difference=np.sqrt(np.sum((wvt-wvt2)**2))
+        print("dif",difference)
+
+    print("elapsed time "+str(time.time()-start))
+    return wvt
+
 
 if __name__ == "__main__":
     sourcedir,signal,var=bin_accretion.initialize()
     geocarray,scalearray=initialize()
     target=5
     epsilon=10
-    wvt=iteration_func(target,signal,var,geocarray,scalearray,epsilon)
+    wvt=iteration_func0(target,signal,var,geocarray,scalearray,epsilon,displaywvt=True)
 
     fig,ax=plt.subplots()
     image=ax.imshow(wvt,cmap="cubehelix")

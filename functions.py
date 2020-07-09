@@ -184,8 +184,8 @@ def calculate_signal(binn,sigmap):
         numerator=numerator+sigmap[tupple[0]][tupple[1]]
     return numerator
 
-def calculate_scales(target,binlist,signal,var,wvt):
-    displayWVT=True
+def calculate_scales(target,binlist,signal,var,wvt,displayWVT=False):
+    
 
     geomcentres=[]
     scalelengths=[]
@@ -216,7 +216,7 @@ def calculate_scales(target,binlist,signal,var,wvt):
     return wvt,geocarray,scalearray
 
 def calculate_cvt(target,binlist,signal,var,wvt):
-    displayWVT=True
+    displayWVT=False
 
     geomcentres=[]
     scalelengths=[]
