@@ -10,6 +10,8 @@ def closest_point(point,pointset,weightmap):
     try:
         ind=sp.distance.cdist([point],pointset).argmin()
     except:
+        print(point)
+        print(pointset)
         print('cdist failed, using manually calculating distance')
         pointsetlist=np.asarray(list(map(lambda x:[x[0],x[1]],pointset)))
         pointvect=np.array([point[0],point[1]])
@@ -56,10 +58,13 @@ def scaled_closest(point,pointset,scaleset):
 
 def weighted_centroid(pointset,weightmap):
     ## We are calculating the weighted centroid for a set of points. Returns index and set mass.
-    mass=sum(list(map(lambda x:weightmap[x[0]][x[1]],pointset)))
-    indlist=list(map(lambda y:tuple(map(lambda x:weightmap[y[0]][y[1]]*x/mass,y)),pointset))
-    ind=tuple(map(sum,zip(*indlist)))
-    return ind, mass
+    if len(pointset)==1:
+        return pointset[0],weightmap[pointset[0][0]][pointset[0][1]]
+    else:
+        mass=sum(list(map(lambda x:weightmap[x[0]][x[1]],pointset)))
+        indlist=list(map(lambda y:tuple(map(lambda x:weightmap[y[0]][y[1]]*x/mass,y)),pointset))
+        ind=tuple(map(sum,zip(*indlist)))
+        return ind, mass
 
 def geometric_center(pointset):
     ## We are calculating the geometric center for a set of points. Returns index.
@@ -137,8 +142,6 @@ def binning(target,binlist,rebinlist,binfo,rebinfo,binm,rebinm,unbin,stonmap):
         return False
     ## else calculate the next point
     nextpoint=closest_point(centroid,unbin,stonmap)
-
-
     ## Apply target condition and accretion condition. If the first is unmet and the second holds,
     ## We add the point to the bin and remove it from unbinned.
     ## The first part is just for expediency. We know that it will fail the uniformity condition.
@@ -205,7 +208,7 @@ def calculate_scales(target,binlist,signal,var,wvt,displayWVT=False):
             delta=np.sqrt(len(binlist[bindex])*target/(q*StoN))
             scalelengths.append(delta)
             for point in binlist[bindex]:
-                wvt[point[0]][point[1]]=sig
+                wvt[point[0]][point[1]]=sig/len(binlist[bindex])
     geocarray=np.array(geomcentres)
     scalearray=np.array(scalelengths)
     if displayWVT:
@@ -219,28 +222,24 @@ def calculate_cvt(target,binlist,signal,var,wvt):
     displayWVT=False
 
     geomcentres=[]
-    scalelengths=[]
     for bindex in range(len(binlist)):
         if len(binlist[bindex])==0:
             print("issue aaaahhhhhh")
             geomcentres.append((0,0))
-            scalelengths.append(0)
         else:
-            StoN=calculate_SN(binlist[bindex],signal,var)
             sig=calculate_signal(binlist[bindex],signal)
             geoc=geometric_center(binlist[bindex])
             geomcentres.append(geoc)
             
-            scalelengths.append(1)
             for point in binlist[bindex]:
-                wvt[point[0]][point[1]]=sig
+                #wvt[point[0]][point[1]]=bindex
+                wvt[point[0]][point[1]]=sig/len(binlist[bindex])
     geocarray=np.array(geomcentres)
-    scalearray=np.array(scalelengths)
     if displayWVT:
         fig,ax=plt.subplots()
         image=ax.imshow(wvt,cmap="cubehelix")
         fig.colorbar(image)
         plt.show()
-    return wvt,geocarray,scalearray
+    return wvt,geocarray
 
             
