@@ -6,6 +6,7 @@ from astropy.io import fits
 import functions 
 import scipy.spatial as sp
 import time
+from astropy import wcs
 
 #from astropy.utils.data import download_file
 def initialize(enternew=True):
@@ -17,33 +18,49 @@ def initialize(enternew=True):
         validatesignal=True
         validatevar=True
         while validatesignal:
-            tkinter.Tk().withdraw()
+            root=tkinter.Tk()
+            root.withdraw()
             placeholder= askopenfilename(message="Select signal",multiple=True)
+            root.update()
+            root.destroy()
             if type(placeholder) is tuple:
                 if len(placeholder)>2:
                     print("Too many files selected.")
                 if len(placeholder)==1:
                     if ".fits" in placeholder[0]:
                         signalname=placeholder[0]
+                        print("Good file! Moving on")
                         while validatevar:
-                            tkinter.Tk().withdraw()
+                            root=tkinter.Tk()
+                            root.withdraw()
                             place= askopenfilename(message="Select variance")
+                            root.update()
+                            root.destroy()
+                            print("place: ",place)
                             if ".fits" in place:
                                 varname=place
+                                print("Good file! Moving on")
                                 validatevar=False
                                 validatesignal=False
+                            elif place.strip()=="":
+                                print("var input canceled, back to sig input")
+                                validatevar=False
+                            else:
+                                print("invalid var file type")
                     else:
-                        print("Invalid file type")
+                        print("Invalid sig file type")
                 else:
                     if ".fits" in placeholder[0] and ".fits" in placeholder[1]:
                         if "var" in placeholder[0].lower() or "sig" in placeholder[1].lower():
                             varname=placeholder[0]
                             signalname=placeholder[1]
                             validatesignal=False
+                            print("Good files! Moving on")
                         else:
                             signalname=placeholder[0]
                             varname=placeholder[1]
                             validatesignal=False
+                            print("Good files! Moving on")
                     else:
                         print("Invalid file type")
             else:
@@ -52,16 +69,18 @@ def initialize(enternew=True):
         signalname="/Users/pierre/Downloads/image.J024815-081723_icubes.wc.c5008_29.fits"
         varname="/Users/pierre/Downloads/image.J024815-081723_icubes.wc.c5008_29_VAR.fits"
 
-
     sourcedir="/".join(signalname.split("/")[:-1])
+    objname=signalname.split("/")[-1]
     ## to get the directory of the file so that we can save new files there
 
     ##filename is a string locating the selected file
     with fits.open(signalname) as hdul:
         signal=np.flipud(hdul[0].data)
+        wcsx=wcs.WCS(hdul[0].header)
     with fits.open(varname) as hdul:
         var=np.flipud(hdul[0].data)
-    return sourcedir,signal,var
+    
+    return wcsx,signal,var,sourcedir,objname
 
 def cc_accretion0(signal,var,target):
 
@@ -152,6 +171,8 @@ def cc_accretion0(signal,var,target):
 def validateappend(target,candidate,check):
     ## candidate is as (y,x)
     try:
+        if candidate[0]<0 or candidate[0]>=len(check) or candidate[1]<0 or candidate[1]>=len(check[0]):
+            raise NameError("bluhbluh")
         if check[candidate[0]][candidate[1]]==-1:
             try:
                 target.index(candidate)
@@ -236,26 +257,25 @@ def cc_accretion(signal,var,target):
     ## At this point, binlist should contain all of the original points
     ## Now I want to iterate through binlist to get the list of generators. This is really what this was for
     ## Though now is as good of a time as any to create the CVT
-    wvt=np.zeros_like(signal)
-    wvt,geocarray=functions.calculate_cvt(target,binlist,signal,var,wvt)
-    return wvt,geocarray
+    geocarray=functions.calculate_cvt(target,binlist,signal,var)
+    
+    return binlist,geocarray
     
 
 if __name__ == "__main__":
-    sourcedir,signal,var=initialize(enternew=True)
+    sourcedir,wcsx,signal,var=initialize(enternew=True)
     target=5
-    start=time.time()
-    
-    wvt,geocarray=cc_accretion0(signal,var,target)
     mid=time.time()
-    wvt2,geocarray2=cc_accretion(signal,var,target)
-    print("elapsed time first method"+str(mid-start))
+    binlist,geocarray=cc_accretion(signal,var,target)
     print("elapsed time spread method"+str(time.time()-mid))
+    wvt=functions.generate_wvt(binlist,signal,displayWVT=True)
+    
+    """
     fig,ax=plt.subplots(1,1)
-    image=ax.imshow(wvt-wvt2,cmap="cubehelix")
+    image=ax.imshow(wvt,cmap="cubehelix")
     fig.colorbar(image)
     plt.show()
-    '''
+
     hdu = fits.PrimaryHDU(np.flipud(wvt))
     hdul = fits.HDUList([hdu])
     hdul.writeto(sourcedir+"July20/new_style/uniterated_cvt1.fits",overwrite=True)
@@ -268,4 +288,4 @@ if __name__ == "__main__":
     fig,ax=plt.subplots()
     image=ax.imshow(wvt,cmap="cubehelix")
     fig.colorbar(image)
-    plt.show()'''
+    plt.show()"""

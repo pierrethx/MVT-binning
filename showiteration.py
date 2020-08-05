@@ -7,16 +7,16 @@ import bin_accretion,wvt_iteration,functions
 from matplotlib.animation import FuncAnimation,PillowWriter
 import time
 
+
+
 def iteration_funca(target,signal,var,geocarray,scalearray,epsilon,displaywvt=False):
-    wvt=np.zeros_like(signal)
     target=5
     start=time.time()
     ## have to manually kill terminal is does not converge
     difference=2*epsilon
-
     supremebinlist=[]
     supremevibelist=[]
-
+    freaky=[]
     
 
     while difference>epsilon:
@@ -40,6 +40,12 @@ def iteration_funca(target,signal,var,geocarray,scalearray,epsilon,displaywvt=Fa
             wvt_iteration.append_validate((point[0]-1,point[1]),viable[g],assign)
             wvt_iteration.append_validate((point[0],point[1]+1),viable[g],assign)
             wvt_iteration.append_validate((point[0],point[1]-1),viable[g],assign)
+            if len(viable[g])==0:
+                if(geocarray[g][0]<0 or geocarray[g][1]<0):
+                    print("Disapprove but like. ok")
+                    freaky.append(geocarray[g])
+                else:
+                    raise NameError("uh ruh roh")
             #print(str(int(g*100/len(geocarray)))+" percent done with init pass")
         while wvt_iteration.checkneg(assign) or wvt_iteration.viabempty(viable):
             for g in range(len(geocarray)):
@@ -75,27 +81,24 @@ def iteration_funca(target,signal,var,geocarray,scalearray,epsilon,displaywvt=Fa
                         binnarray[j][i]=assign[j][i]
             supremebinlist.append(binnarray)
             supremevibelist.append(np.ma.masked_where(vibearray==0,vibearray))
+            if len(supremebinlist)>100:
+                break
         binlist=[ [] for _ in range(len(geocarray)) ]
         for j in range(len(assign)):
             for i in range(len(assign[0])):
                 binlist[assign[j][i]].append((j,i))
-        wvt,geocarray2,scalearray2=functions.calculate_scales(target,binlist,signal,var,wvt,displaywvt)
+        geocarray2,scalearray2=functions.calculate_scales(target,binlist,signal,var)
         for r in range(len(binlist)):
             if len(binlist[r])==0:
                 print("empty index"+str(r))
                 geocarray2[r]=geocarray[r]
                 scalearray2[r]=scalearray[r]
+        difference=0
         
-        difference=np.sqrt(np.sum((wvt-wvt2)**2))
-        print("dif",difference)
     
     print("elapsed time "+str(time.time()-start))
 
-    fig=plt.figure()
-    plt.imshow(wvt,cmap='cubehelix')
-    plt.show()
-
-    return supremebinlist,supremevibelist
+    return supremebinlist,supremevibelist,np.array(freaky)
 
 def update(num,contourb,contourf):
     ax1.clear
@@ -103,16 +106,36 @@ def update(num,contourb,contourf):
     ax1.imshow(contourf[num],cmap="binary")
     print(str(num)+" out of "+str(len(contourb)))
 
-sourcedir,signal,var=bin_accretion.initialize(enternew=True)
+wscx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
+
 
 target=20
 epsilon=4000
-wvt,geocarray=bin_accretion.cc_accretion(signal,var,target)
+binlist,geocarray=bin_accretion.cc_accretion(signal,var,target)
+
+print(geocarray)
+
 scalearray=np.full(len(geocarray),1)
-np.random.shuffle(geocarray)
-sbl,svl=iteration_funca(target,signal,var,geocarray,scalearray,epsilon)
+wvt=functions.generate_wvt(binlist,signal)
+
+
+
+#np.random.shuffle(geocarray)
+sbl,svl,freakya=iteration_funca(target,signal,var,geocarray,scalearray,epsilon)
+
+fig,ax=plt.subplots()
+
+ax.imshow(wvt,cmap="cubehelix")
+for binn in binlist:
+    bim=np.array(binn)
+    ax.plot(bim[:,1],bim[:,0])
+plt.show()
+
+raise NameError(":0")
+
 print("iteration over")
 fig,ax1=plt.subplots()
+
 anim=FuncAnimation(fig,update,frames=range(len(sbl)),fargs=(sbl,svl),interval=50)
 print("setup animation")
 objname="testdata"

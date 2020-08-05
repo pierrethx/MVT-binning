@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import tkinter
 from tkinter.filedialog import askopenfilename
+from matplotlib.widgets import Cursor
 from astropy.io import fits
+
 import scipy.spatial as sp 
 
 def closest_point(point,pointset,weightmap):
@@ -187,9 +189,8 @@ def calculate_signal(binn,sigmap):
         numerator=numerator+sigmap[tupple[0]][tupple[1]]
     return numerator
 
-def calculate_scales(target,binlist,signal,var,wvt,displayWVT=False):
+def calculate_scales(target,binlist,signal,var):
     
-
     geomcentres=[]
     scalelengths=[]
     for bindex in range(len(binlist)):
@@ -199,7 +200,6 @@ def calculate_scales(target,binlist,signal,var,wvt,displayWVT=False):
             scalelengths.append(0)
         else:
             StoN=calculate_SN(binlist[bindex],signal,var)
-            sig=calculate_signal(binlist[bindex],signal)
             geoc=geometric_center(binlist[bindex])
             geomcentres.append(geoc)
             
@@ -207,19 +207,13 @@ def calculate_scales(target,binlist,signal,var,wvt,displayWVT=False):
             q=np.pi ## for circular bins, which is generally what we are trying to achieve
             delta=np.sqrt(len(binlist[bindex])*target/(q*StoN))
             scalelengths.append(delta)
-            for point in binlist[bindex]:
-                wvt[point[0]][point[1]]=sig/len(binlist[bindex])
+            
     geocarray=np.array(geomcentres)
     scalearray=np.array(scalelengths)
-    if displayWVT:
-        fig,ax=plt.subplots()
-        image=ax.imshow(wvt,cmap="cubehelix")
-        fig.colorbar(image)
-        plt.show()
-    return wvt,geocarray,scalearray
+    
+    return geocarray,scalearray
 
-def calculate_cvt(target,binlist,signal,var,wvt):
-    displayWVT=False
+def calculate_cvt(target,binlist,signal,var):
 
     geomcentres=[]
     for bindex in range(len(binlist)):
@@ -227,19 +221,78 @@ def calculate_cvt(target,binlist,signal,var,wvt):
             print("issue aaaahhhhhh")
             geomcentres.append((0,0))
         else:
-            sig=calculate_signal(binlist[bindex],signal)
             geoc=geometric_center(binlist[bindex])
             geomcentres.append(geoc)
             
-            for point in binlist[bindex]:
-                #wvt[point[0]][point[1]]=bindex
-                wvt[point[0]][point[1]]=sig/len(binlist[bindex])
     geocarray=np.array(geomcentres)
+    return geocarray
+
+def generate_wvt(binlist,signal,displayWVT=False):
+    wvt=np.zeros_like(signal)
+    for bindex in range(len(binlist)):
+        sig=calculate_signal(binlist[bindex],signal)
+        for point in binlist[bindex]:
+                wvt[point[0]][point[1]]=sig/len(binlist[bindex])
     if displayWVT:
         fig,ax=plt.subplots()
+        def onclick(event):
+            x1,y1=event.xdata,event.ydata
+            for binn in binlist:
+                if (int(y1+.5),int(x1+.5)) in binn:
+                    print("other pixels in this bin: ")
+                    for tup in binn:
+                        print("x: "+str(tup[1])+", y:"+str(tup[0]))
+        cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
+        fig.canvas.mpl_connect('button_press_event',onclick)
         image=ax.imshow(wvt,cmap="cubehelix")
         fig.colorbar(image)
         plt.show()
-    return wvt,geocarray
-
+    return wvt
             
+def import_fits():
+
+    ## First let's select a signal file
+    ## first you can select signal, then variance. 
+    ## for convenience you can select both files in the first window but they need to have "sig" or "var" in the name
+    if enternew:
+        validatesignal=True
+        while validatesignal:
+            root=tkinter.Tk()
+            root.withdraw()
+            placeholder= askopenfilename(message="Select signal")
+            root.update()
+            root.destroy()
+            if ".fits" in placeholder:
+                validatesignal=False
+            if placeholder.trim().equals(""):
+                raise NameError("Bye Bye")
+            
+    else:
+        signalname="/Users/pierre/Downloads/image.J024815-081723_icubes.wc.c5008_29.fits"
+
+    sourcedir="/".join(signalname.split("/")[:-1])
+    ## to get the directory of the file so that we can save new files there
+
+    ##filename is a string locating the selected file
+    with fits.open(signalname) as hdul:
+        signal=np.flipud(hdul[0].data)
+        wcsx=wcs.WCS(hdul[0].header)
+    
+    return sourcedir,wcsx,signal
+
+def numdif(x,y):
+    diff=[]
+    for i in range(len(y)):
+        if i==0 or i==len(y)-1:
+            diff.append(0)
+        else:
+            diff.append((y[i+1]-y[i-1])/(x[i+1]-x[i-1]))
+    return np.array(diff)
+
+def lerp(x):
+    arr=[]
+    arr.append(x[0])
+    for i in range(1,len(x)):
+        arr.append((x[i]+x[i-1])/2)
+        arr.append(x[i])
+    return np.array(arr)
