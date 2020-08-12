@@ -6,7 +6,12 @@ from matplotlib.widgets import Cursor,Slider
 from astropy.io import fits
 import functions,bin_accretion,wvt_iteration
 from scipy.ndimage.measurements import center_of_mass
+from scipy import stats
+from scipy.optimize import curve_fit
 import time
+
+def circularb(x,A,r,b):
+    return A*(1+(x/r)**2)**(0.5-3*b)
 
 def alignwcs(wcs,angles):
     tags=[]
@@ -55,7 +60,7 @@ except:
 while repeat:
     center=center_of_mass(signal) #as usual is (y,x)
     numdirections=56
-    numsteps=50
+    numsteps=100
     argus=np.linspace(0,2*np.pi,numdirections+1)[:-1]
     directions,tags=alignwcs(wcsx,argus)
     scale=0.5*np.sqrt(len(signal)**2+len(signal[0])**2)
@@ -189,10 +194,21 @@ while repeat:
     if edge:
         ax.plot(0*yedge+edgex,yedge,color="green",linestyle="dashed")
         ax.annotate('potential edge', xy=(edgex, edgey), xytext=(edgex-np.max(xa)*0.02, np.nanmax(averages)*.2),horizontalalignment='right')
-        print(edgex)
+        print("edge "+str(edgex))
+        try:
+            slope,intercept,rv,pv,sterr=stats.linregress(xa[val+1:],ya[val+1:])
+            print("slope "+str(slope))
+            print("intercept "+str(intercept))
+            print("rv "+str(rv))
+            print("pv "+str(pv))
+            print("sterr "+str(sterr))
+        except:
+            pass
     else:
         ax.plot(0*yedge+edgex,yedge,color="red",linestyle="dashed")
         ax.annotate('no edge detected', xy=(edgex, edgey), xytext=(edgex-np.max(xa)*0.02, np.nanmax(averages)*.2),horizontalalignment='right')
+        print("no edge")
+
 
 
     plt.show()
@@ -206,11 +222,58 @@ while repeat:
     ax.set_ylabel("counts")
 
     line1,=ax.plot(xl, div1, color="black")
+
+    lines1,=ax.plot(xl, functions.smoother(div1,1), color="red")
+    lines2,=ax.plot(xl, functions.smoother(div1,2), color="orange")
+    lines3,=ax.plot(xl, functions.smoother(div1,3), color="yellow")
+    lines4,=ax.plot(xl, functions.smoother(div1,4), color="green")
+    lines5,=ax.plot(xl, functions.smoother(div1,5), color="blue")
+    lines6,=ax.plot(xl, functions.smoother(div1,6), color="purple")
     ax.set_xlim(0,np.nanmax(xa))
     ax.set_ylim(np.nanmin(div1)*1.1,np.nanmax(div1)*1.1)
+    
+
+    if edge:
+        ax.plot([edgex,edgex],[np.nanmin(div1),np.nanmax(div1)],color="green",linestyle="dashed")
+        ax.annotate('potential edge', xy=(edgex, edgey), xytext=(edgex-np.max(xa)*0.02, np.nanmax(averages)*.2),horizontalalignment='right')
+    else:
+        ax.plot([edgex,edgex],[np.nanmin(div1),np.nanmax(div1)],color="red",linestyle="dashed")
+        ax.annotate('no edge detected', xy=(edgex, edgey), xytext=(edgex-np.max(xa)*0.02, np.nanmax(averages)*.2),horizontalalignment='right')
+    
+
     plt.show()
 
-    """
+    I_0=(ya[0]+np.nanmax(ya))/2
+    smallest=1
+    for l in range(len(ya)):
+        if ya[l]>0.6065*I_0:
+            if ya[l]<ya[smallest]:
+                smallest=l
+        else:
+            break
+
+    inflection=np.argmin(functions.smoother(functions.numdif(xa,ya),6)[1:smallest+1])
+    if inflection is list:
+        inflection=inflection[-1]
+    
+    
+    
+    beta=0.07/(ya[inflection]/I_0 - 0.6065)
+    r_c=xa[inflection]*np.sqrt(6*beta)
+
+    print(xa[inflection])
+
+    p_0=[I_0,r_c,beta]
+
+    print(p_0)
+
+    val=int(val*.9)
+
+    popt,pcov=curve_fit(circularb,xa[:val+1],ya[:val+1],p0=p_0,sigma=yav[:val+1],absolute_sigma=True)
+    perr = np.sqrt(np.diag(pcov))
+
+    print(popt)
+
     fig,ax = plt.subplots()
     ax.set_title("Average radial profile")
     ax.set_xlabel("radial distance from weighted center (px)")
@@ -218,8 +281,18 @@ while repeat:
     line1,=ax.plot(xa, ya, color="black")
     ax.set_xlim(0,np.nanmax(xa))
     ax.set_ylim(0,np.nanmax(averages)*1.1)
+    linerf,=ax.plot(xa, circularb(xa,I_0,r_c,beta), color="red")
+
+    yp=circularb(xa,popt[0],popt[1],popt[2])
+    lineff,=ax.plot(xa, yp, color="blue")
+
+    for j in range(len(yp)):
+        if yp[j]/ya[j]>1.6:
+            break
+    ax.plot([xa[j],xa[j]],[np.nanmin(ya),np.nanmax(ya)],color="green",linestyle="dashed")
+    print(xa[j])
+
     plt.show()
-    """
 
     try:
         wcsx,signal,var,source,objname=bin_accretion.initialize(enternew=True)

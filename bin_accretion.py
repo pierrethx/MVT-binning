@@ -82,92 +82,6 @@ def initialize(enternew=True):
     
     return wcsx,signal,var,sourcedir,objname
 
-def cc_accretion0(signal,var,target):
-
-    ## this is the signal-to-noise for each pixel
-    ston=signal/np.sqrt(np.abs(var))
-
-    ## we replace each unusable value with 0. These unusable values would occur when 
-    ## the variance is 0, which should not occur for real data
-    ## also i feel like there is a faster way to do this step
-    unbin=[]
-    for y in range(len(ston)):
-        for x in range(len(ston[y])):
-            if np.isnan(ston[y][x]):
-                print(var[y][x])
-            unbin.append((y,x))
-            
-    ## Coordinate tuples are inexplicably (y,x). This is how the builtin functions have it
-    ## unbinned is the list of all unbinned pixels, which at this stage is all pixels
-
-    '''Bin Accretion algorithm part'''
-
-    ## Funnily enough, we don't use the signal to noise, we actually use the density
-    ## For the bin-accretion, density = (S/N)^2 + combines additively. This is adequate.
-    density=ston**2
-    print(len(unbin))
-
-    ## So we need to start from the pixel with the highest S/N which is at 
-    firstcoord=np.unravel_index(ston.argmax(),ston.shape)
-    ## We initialize our lists
-    ## binlist is the list of bins, which are augmentable lists that hold coord tuples
-    ## the first bin is initially just the first point
-    binlist=[[firstcoord]]
-    rebinlist=[]
-    ## and to be proactive, a list to put the one's we'll rebin due to too little mass
-
-    ## with that, we want to remove this point from unbinned
-    unbin.remove(firstcoord)
-    ## binfo holds the centroid of each (completed) bin so that we don't have to calc it each time
-    ## here it is (0,0) and 0 since it will be updated once the first bin is complete
-    ## we also have rebinfo for the bins that do not meet success condition
-    binfo=[(0,0)]
-    rebinfo=[(0,0)]
-    ## And the same of the bin masses
-    binm=[0]
-    rebinm=[0]
-
-    accrete=True
-    while accrete:
-        accrete=functions.binning(target,binlist,rebinlist,binfo,rebinfo,binm,rebinm,unbin,density)
-
-    ## This is the bin accretion function. It self-iterates. All input objects are mutated
-    while len(unbin)>0:
-        
-        print(len(unbin))
-
-        ## Calculate centroid of all thusfar binned pixels to select new bin start
-        supermass=sum(binm)
-        print(binm)
-        print(supermass)
-        raise NameError("Stop!!!")
-        supercentroid=(sum([binm[i]*binfo[i][0]/supermass for i in range(len(binfo))]),sum([binm[i]*binfo[i][1]/supermass for i in range(len(binfo))]))
-        newpoint=functions.closest_point(supercentroid,unbin,density)
-
-        print("scentroid is "+str(supercentroid))
-        print("newpoint is "+str(newpoint),end=" ")
-        
-
-        ## then start a new bin. And its corresponding binfo entry
-        binlist.append([newpoint])
-        unbin.remove(newpoint)
-        binfo.append((0,0))
-        binm.append(0)
-        functions.binning(target,binlist,rebinlist,binfo,rebinfo,binm,rebinm,unbin,density)
-        accrete=True
-        while accrete:
-            accrete=functions.binning(target,binlist,rebinlist,binfo,rebinfo,binm,rebinm,unbin,density)
-    print("Redistribution time")
-
-    ## Then we assign each unsuccessfully binned pixel to a successfully bin
-    functions.redistribute(binlist,rebinlist,binfo,density)
-    ## At this point, binlist should contain all of the original points
-    ## Now I want to iterate through binlist to get the list of centroids. This is really what this was for
-    ## Though now is as good of a time as any to create the CVT
-    wvt=np.zeros_like(signal)
-    wvt,geocarray=functions.calculate_cvt(target,binlist,signal,var,wvt)
-    return wvt,geocarray
-
 def validateappend(target,candidate,check):
     ## candidate is as (y,x)
     try:
@@ -222,6 +136,9 @@ def cc_accretion(signal,var,target):
             Rmax=0.3
             newbin=current+[nextpoint]
             ncentroid, nmass=functions.weighted_centroid(newbin,density)
+            ## replacing weighted centroids with geometric centers as suggested by Diehl 
+            ## in Cappellari's implementation to address negative data
+            ncentroid=functions.geometric_center(newbin)
             rmax=sp.distance.cdist([ncentroid],newbin).max()
             R=rmax*np.sqrt(np.pi/len(newbin))-1
             if R<=Rmax and np.abs(binmass-target**2)>np.abs(nmass-target**2):
@@ -245,6 +162,7 @@ def cc_accretion(signal,var,target):
         else:
             binlist.append(current)
             bcentroids.append(centroid)
+            
         supercentroid=((supercentroid[0]*supermass+centroid[0]*binmass)/(supermass+binmass),(supercentroid[1]*supermass+centroid[1]*binmass)/(supermass+binmass))
         supermass=supermass+binmass
         viable.extend([v for v in viablecell if not v in viable])
@@ -263,29 +181,10 @@ def cc_accretion(signal,var,target):
     
 
 if __name__ == "__main__":
-    sourcedir,wcsx,signal,var=initialize(enternew=True)
+    wcsx,signal,var,sourcedir,objname=initialize(enternew=True)
     target=5
     mid=time.time()
     binlist,geocarray=cc_accretion(signal,var,target)
     print("elapsed time spread method"+str(time.time()-mid))
     wvt=functions.generate_wvt(binlist,signal,displayWVT=True)
     
-    """
-    fig,ax=plt.subplots(1,1)
-    image=ax.imshow(wvt,cmap="cubehelix")
-    fig.colorbar(image)
-    plt.show()
-
-    hdu = fits.PrimaryHDU(np.flipud(wvt))
-    hdul = fits.HDUList([hdu])
-    hdul.writeto(sourcedir+"July20/new_style/uniterated_cvt1.fits",overwrite=True)
-    #np.save(sourcedir+"/gcenters_of_the_image1",geocarray)
-    hdu = fits.PrimaryHDU(np.flipud(wvt2))
-    hdul = fits.HDUList([hdu])
-    hdul.writeto(sourcedir+"July20/original_recipe/uniterated_wvt2.fits",overwrite=True)
-    #np.save(sourcedir+"/gcenters_of_the_image2",geocarray)
-    
-    fig,ax=plt.subplots()
-    image=ax.imshow(wvt,cmap="cubehelix")
-    fig.colorbar(image)
-    plt.show()"""

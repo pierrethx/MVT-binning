@@ -70,8 +70,11 @@ def weighted_centroid(pointset,weightmap):
 
 def geometric_center(pointset):
     ## We are calculating the geometric center for a set of points. Returns index.
-    ind=tuple(map(lambda x:sum(x)/len(x),zip(*pointset)))
-    return ind
+    if len(pointset)==1:
+        return pointset[0]
+    else:
+        ind=tuple(map(lambda x:sum(x)/len(x),zip(*pointset)))
+        return ind
 
 
 def checktoadd(point,binn,weightmap,target,binmass):
@@ -97,73 +100,6 @@ def checktoadd(point,binn,weightmap,target,binmass):
         return False
     ## otherwise it has passed all three tests. Huzzah!
     return True
-
-def binningpseudo(target,binlist,binfo,unbin,stonmap,tessellation):
-    ## immediate stop if there are no more points
-    if len(unbin)==0:
-        return False
-    
-    ## Look at the next possible point to be accreted as the closest point to bin centroid
-    centroid, mass=weighted_centroid(binlist[-1],stonmap)
-    nextpoint=closest_point(centroid,unbin,stonmap)
-    ## Apply target condition and accretion condition. If the first is unmet and the second holds,
-    ## We add the point to the bin and remove it from unbinned.
-    ## The first part is just for expediency. We know that it will fail the uniformity condition.
-    if mass<target**2 and checktoadd(nextpoint,binlist[-1],stonmap,target,mass):
-        binlist[-1].append(nextpoint)
-        unbin.remove(nextpoint)
-        tessellation[nextpoint[0]][nextpoint[1]]=len(binfo)-1
-        
-        return True
-    ## If target condition is met or accretion condition unmet, then we terminate bin
-    ## Then we move to the next bin
-    else:
-        ## update binfo with the finished bin centroids and masses
-        binfo[-1]=(centroid[0],centroid[1],mass)
-        return False
-
-def binning(target,binlist,rebinlist,binfo,rebinfo,binm,rebinm,unbin,stonmap):
-
-    ## We define the success threshold to be some fraction. CC03 suggests:
-    ## This will be relevant after accretion has stopped
-    success=0.8
-    
-    ## Look at the next possible point to be accreted as the closest point to bin centroid
-    centroid, mass=weighted_centroid(binlist[-1],stonmap)
-
-    ## immediate stop if there are no more points
-    if len(unbin)==0:
-        ## Assign binfo
-        binfo[-1]=(centroid[0],centroid[1])
-        binm[-1]=mass
-        ## And designate as unsuccessful if condition unmet
-        if mass/(target**2)<success:
-            rebinfo.append(binfo.pop(-1))
-            rebinlist.append(binlist.pop(-1))
-            rebinm.append(binm.pop(-1))
-        return False
-    ## else calculate the next point
-    nextpoint=closest_point(centroid,unbin,stonmap)
-    ## Apply target condition and accretion condition. If the first is unmet and the second holds,
-    ## We add the point to the bin and remove it from unbinned.
-    ## The first part is just for expediency. We know that it will fail the uniformity condition.
-    if mass<target**2 and checktoadd(nextpoint,binlist[-1],stonmap,target,mass):
-        binlist[-1].append(nextpoint)
-        unbin.remove(nextpoint)
-        
-        return True
-    ## If target condition is met or accretion condition unmet, then we terminate bin
-    ## Then we move to the next bin
-    else:
-        ## update binfo with the finished bin centroids and masses
-        binfo[-1]=(centroid[0],centroid[1])
-        binm[-1]=mass
-        ## Now is also a time where we can designate binning success relative to the target
-        if mass/(target**2)<success:
-            rebinfo.append(binfo.pop(-1))
-            rebinlist.append(binlist.pop(-1))
-            rebinm.append(binm.pop(-1))
-        return False
 
 def redistribute(binlist,rebinlist,binfo,weightmap):
     for bindex in range(len(rebinlist)):
@@ -200,6 +136,9 @@ def calculate_scales(target,binlist,signal,var):
             scalelengths.append(0)
         else:
             StoN=calculate_SN(binlist[bindex],signal,var)
+            if StoN==0:
+                print(binlist[bindex])
+                raise NameError(":p")
             geoc=geometric_center(binlist[bindex])
             geomcentres.append(geoc)
             
@@ -242,6 +181,31 @@ def generate_wvt(binlist,signal,displayWVT=False):
                     print("other pixels in this bin: ")
                     for tup in binn:
                         print("x: "+str(tup[1])+", y:"+str(tup[0]))
+                    break
+        cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
+        fig.canvas.mpl_connect('button_press_event',onclick)
+        image=ax.imshow(wvt,cmap="cubehelix")
+        fig.colorbar(image)
+        plt.show()
+    return wvt
+
+def generate_wvt2(binlist,signal,var,displayWVT=False):
+    wvt=np.zeros_like(signal)
+    for bindex in range(len(binlist)):
+        sig=calculate_signal(binlist[bindex],signal)
+        for point in binlist[bindex]:
+                wvt[point[0]][point[1]]=sig/len(binlist[bindex])
+    if displayWVT:
+        fig,ax=plt.subplots()
+        def onclick(event):
+            x1,y1=event.xdata,event.ydata
+            for binn in binlist:
+                if (int(y1+.5),int(x1+.5)) in binn:
+                    print("StoN is for this bin: "+str(calculate_SN(binn,signal,var)))
+                    print("other pixels in this bin: ")
+                    for tup in binn:
+                        print("x: "+str(tup[1])+", y:"+str(tup[0]))
+                    break
         cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
         fig.canvas.mpl_connect('button_press_event',onclick)
         image=ax.imshow(wvt,cmap="cubehelix")
@@ -249,36 +213,6 @@ def generate_wvt(binlist,signal,displayWVT=False):
         plt.show()
     return wvt
             
-def import_fits():
-
-    ## First let's select a signal file
-    ## first you can select signal, then variance. 
-    ## for convenience you can select both files in the first window but they need to have "sig" or "var" in the name
-    if enternew:
-        validatesignal=True
-        while validatesignal:
-            root=tkinter.Tk()
-            root.withdraw()
-            placeholder= askopenfilename(message="Select signal")
-            root.update()
-            root.destroy()
-            if ".fits" in placeholder:
-                validatesignal=False
-            if placeholder.trim().equals(""):
-                raise NameError("Bye Bye")
-            
-    else:
-        signalname="/Users/pierre/Downloads/image.J024815-081723_icubes.wc.c5008_29.fits"
-
-    sourcedir="/".join(signalname.split("/")[:-1])
-    ## to get the directory of the file so that we can save new files there
-
-    ##filename is a string locating the selected file
-    with fits.open(signalname) as hdul:
-        signal=np.flipud(hdul[0].data)
-        wcsx=wcs.WCS(hdul[0].header)
-    
-    return sourcedir,wcsx,signal
 
 def numdif(x,y):
     diff=[]
@@ -288,6 +222,20 @@ def numdif(x,y):
         else:
             diff.append((y[i+1]-y[i-1])/(x[i+1]-x[i-1]))
     return np.array(diff)
+
+def smoother(x,n):
+    ## no smoothing is n=0
+    y=[]
+    for j in range(len(x)):
+        upper=j+n+1
+        lower=j-n
+        if lower<0:
+            lower=0
+        if upper>len(x):
+            upper=len(x)
+        y.append(np.average(x[lower:upper]))
+    return y
+                
 
 def lerp(x):
     arr=[]

@@ -1,10 +1,16 @@
-import bin_accretion,main
+import bin_accretion,main,qradial,queuemain
 
 if __name__ == "__main__":
-    sourcelist=[]
-    wscxlist=[]
+    superwcsxlist=[]
+    supersiglist=[]
+    supervarlist=[]
+    supersourcelist=[]
+    superobjlist=[]
+
+    wcsxlist=[]
     siglist=[]
     varlist=[]
+    sourcelist=[]    
     objlist=[]
     targlist=[]
     contqueue=True
@@ -15,7 +21,7 @@ if __name__ == "__main__":
             wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
             objname=main.getname("_".join(objname.split("_")[:-1]))
             sourcelist.append(sourcedir)
-            wscxlist.append(wcsx)
+            wcsxlist.append(wcsx)
             siglist.append(signal)
             varlist.append(var)
             objlist.append(objname)
@@ -39,6 +45,12 @@ if __name__ == "__main__":
             else:
                 weighting=True
             subfolder="target"+str(targlist[m])
-            wvt,vwvt=main.mainfunc(siglist[i],varlist[i],targlist[m],weighting=weighting,displayWVT=False,epsilon=-10)
-            main.saveiteratedfits(targlist[m],wscxlist[i],wvt,vwvt,objlist[i],sourcelist[i],weighting=weighting,subfolder=subfolder)
+            wvt,vwvt=main.mainfunc(siglist[i],varlist[i],targlist[m],displayWVT=False,epsilon=-10)
+            a,b,c,d,e=main.saveiteratedfits(targlist[m],wcsxlist[i],wvt,vwvt,objlist[i],sourcelist[i],weighting=weighting,subfolder=subfolder)
+            superwcsxlist.append(a)
+            supersiglist.append(b)
+            supervarlist.append(c)
+            supersourcelist.append(d+"/"+subfolder)
+            superobjlist.append(e)
+    qradial.qradial(superwcsxlist,supersiglist,supervarlist,supersourcelist,superobjlist)
 print("Bye Bye!")

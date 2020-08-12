@@ -24,23 +24,6 @@ def initialize(enternew=False):
     ##filename is a string locating the selected file
     geocarray=np.load(geocenters)
     return geocarray
-def next_iteration(target,signal,var,geocarray,scalearray,wvt,displaywvt=False):
-    ## generate all of the pixels to be slotted into a bin determined by the generators
-    binlist=[ [] for _ in range(len(geocarray)) ]
-    for y in range(len(signal)):
-        print("line"+str(y))        
-        for x in range(len(signal[y])):
-            pixel=(y,x)
-            
-            ## assign pixel to the generator with the minimum scaled length
-            binlist[functions.scaled_closest(pixel,geocarray,scalearray)].append(pixel)
-    print("image scanned")
-    wvt,geocarray2,scalearray2=functions.calculate_scales(target,binlist,signal,var,wvt,displaywvt)
-    for r in range(len(binlist)):
-        if binlist[r]==[]:
-            geocarray2[r]=geocarray[r]
-            scalearray2[r]=scalearray[r]
-    return wvt,geocarray2,scalearray2
 
 def next_iteration2(target,signal,var,geocarray,scalearray,weighting=True):
     ## generate all of the pixels to be slotted into a bin determined by the generators
@@ -91,38 +74,29 @@ def next_iteration2(target,signal,var,geocarray,scalearray,weighting=True):
     for j in range(len(assign)):
         for i in range(len(assign[0])):
             binlist[assign[j][i]].append((j,i))
-    if weighting:
-        geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
-    else:
-        geocarray=functions.calculate_cvt(target,binlist,signal,var)
 
     cancelled=0
-    geol=[]
-    scalel=[]
+    
     for r in range(len(binlist)):
         if len(binlist[r])==0:
             print("empty index"+str(r))
             cancelled+=1
     if cancelled>0:
+        binl=[]
         for r in range(len(binlist)):
             if len(binlist[r])==0:
                 pass
             else:
-                geol.append(geocarray[r])
-                scalel.append(scalearray[r])
-        geocarray=np.array(geol)
-        scalearray=np.array(scalel)
+                binl.append(binlist[r])
+        geocarray,scalearray=functions.calculate_scales(target,binl,signal,var)
+        return binl,geocarray,scalearray
+    else:
+        geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
+        return binlist,geocarray,scalearray
 
-    return binlist,geocarray,scalearray
+    
 
 def checkneg(assign):
-    '''try:
-        assign.index(-1)
-        print(min(assign))
-        return True
-    except ValueError:
-        print("failed :(")
-        return False'''
     num=np.count_nonzero(assign==-1)
     #print(num)
     if num>0:
@@ -160,7 +134,8 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon,weighting=True
         print("another iteration")
         wvt2=np.copy(wvt)
         binlist,geocarray,scalearray=next_iteration2(target,signal,var,geocarray,scalearray,weighting=weighting)
-        wvt=functions.generate_wvt(binlist,signal,displayWVT=False)
+        wvt=functions.generate_wvt(binlist,signal,displayWVT=displaywvt)
+        print(scalearray)
 
         if epsilon<0:
             numit+=1

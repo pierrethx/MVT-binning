@@ -29,8 +29,8 @@ def gettarget(initial=0):
 def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
     binlist,init_generators=bin_accretion.cc_accretion(signal,var,target)
     init_scalelengths=np.full(len(init_generators),1)
-    binlist=wvt_iteration.iteration_func(target,signal,var,init_generators,init_scalelengths,epsilon,weighting=weighting,displaywvt=False)
-    wvt=functions.generate_wvt(binlist,signal,displayWVT)
+    binlist=wvt_iteration.iteration_func(target,signal,var,init_generators,init_scalelengths,epsilon,weighting=weighting,displaywvt=displayWVT)
+    wvt=functions.generate_wvt2(binlist,signal,var,displayWVT)
     vwvt=functions.generate_wvt(binlist,var,displayWVT)
     return wvt,vwvt
 
@@ -39,16 +39,17 @@ def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder="",weighti
     hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
     hdul = fits.HDUList([hdu])
     if weighting:
-        hdul.writeto(sourcedir+subfolder+"/witerated_"+objname+"_target_"+str(target)+".fits",overwrite=True)
+        hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_sig.fits",overwrite=True)
     else:
-        hdul.writeto(sourcedir+subfolder+"/citerated_"+objname+"_target_"+str(target)+".fits",overwrite=True)
+        hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_sig.fits",overwrite=True)
 
     hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=header)
     hdul2 = fits.HDUList([hdu2])
     if weighting:
-        hdul2.writeto(sourcedir+subfolder+"/wit_var_"+objname+"_target_"+str(target)+".fits",overwrite=True)
+        hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_var.fits",overwrite=True)
     else:
-        hdul2.writeto(sourcedir+subfolder+"/cit_var_"+objname+"_target_"+str(target)+".fits",overwrite=True)
+        hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_sig.fits",overwrite=True)
+    return wcsx,wvt,vwvt,sourcedir,objname
 
 
 if __name__ == "__main__":
@@ -63,5 +64,5 @@ if __name__ == "__main__":
         target=-target
     else:
         weighting=True
-    wvt,vwvt=mainfunc(signal,var,target,displayWVT=True)
+    wvt,vwvt=mainfunc(signal,var,target,displayWVT=True,epsilon=-10)
     saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir)

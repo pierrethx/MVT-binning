@@ -10,16 +10,15 @@ import time
 
 
 def iteration_funca(target,signal,var,geocarray,scalearray,epsilon,displaywvt=False):
-    target=5
     start=time.time()
     ## have to manually kill terminal is does not converge
     difference=2*epsilon
     supremebinlist=[]
     supremevibelist=[]
     freaky=[]
-    
+    numit=0    
 
-    while difference>epsilon:
+    while numit<=epsilon:
         print("another iteration")
         geocarray2=np.copy(geocarray)
         scalearray2=np.copy(scalearray)
@@ -93,7 +92,7 @@ def iteration_funca(target,signal,var,geocarray,scalearray,epsilon,displaywvt=Fa
                 print("empty index"+str(r))
                 geocarray2[r]=geocarray[r]
                 scalearray2[r]=scalearray[r]
-        difference=0
+        numit+=1
         
     
     print("elapsed time "+str(time.time()-start))
@@ -109,8 +108,8 @@ def update(num,contourb,contourf):
 wscx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
 
 
-target=20
-epsilon=4000
+target=15
+epsilon=2
 binlist,geocarray=bin_accretion.cc_accretion(signal,var,target)
 
 print(geocarray)
@@ -120,18 +119,9 @@ wvt=functions.generate_wvt(binlist,signal)
 
 
 
-#np.random.shuffle(geocarray)
+np.random.shuffle(geocarray)
 sbl,svl,freakya=iteration_funca(target,signal,var,geocarray,scalearray,epsilon)
 
-fig,ax=plt.subplots()
-
-ax.imshow(wvt,cmap="cubehelix")
-for binn in binlist:
-    bim=np.array(binn)
-    ax.plot(bim[:,1],bim[:,0])
-plt.show()
-
-raise NameError(":0")
 
 print("iteration over")
 fig,ax1=plt.subplots()
