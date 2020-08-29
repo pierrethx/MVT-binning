@@ -44,20 +44,33 @@ def gendata(widpix,heipix,A,r,b,I_b,edge,sourcedir,objname):
 
 ## generate variance, since all pixels are given by poisson dis, the variances=lambda
 
-## Assume that lambda follows I=A [1+(x^2+y^2)/r^2)]**(0.5-3b)with x,y dist from center
-A=100
-r=32
-b=0.67
-I_b=[20,40,60,80,100,120] #background signal
-edge=[35,70,105]
+def genmoredata(num,widpix,heipix,A,r,b,I_b,edge):
+    ## Assume that lambda follows I=A [1+(x^2+y^2)/r^2)]**(0.5-3b)with x,y dist from center
+    if num==1:
+        for back in I_b:
+            for ed in edge:
+                sourcedir="/Users/pierre/Downloads/Aug15/"+str(widpix)+"x"+str(heipix)+"_peak"+str(A)+"/bg"+str(back)+"/"
+                objname="testdata"
 
-widpix=128
-heipix=128
+                gendata(widpix,heipix,A,r,b,back,ed,sourcedir,objname)
+    else:
+        for m in range(num):
+            for back in I_b:
+                for ed in edge:
+                    sourcedir="/Users/pierre/Downloads/Aug15/"+str(widpix)+"x"+str(heipix)+"_peak"+str(A)+"/bg"+str(back)+"/unbinned"
+                    objname="testdata"+str(m+1)
 
-for back in I_b:
-    for ed in edge:
-        sourcedir="/Users/pierre/Downloads/Aug4/"+str(widpix)+"x"+str(heipix)+"_peak"+str(A)+"/bg"+str(back)+"/"
-        objname="testdata"
+                    gendata(widpix,heipix,A,r,b,back,ed,sourcedir,objname)
 
-        gendata(widpix,heipix,A,r,b,back,ed,sourcedir,objname)
+if __name__ == "__main__":
+    A=100
+    r=32
+    b=0.67
+    I_b=[20,40,60,80,100,120] #background signal
+    edge=[35,70,105]
 
+    widpix=128
+    heipix=128
+
+    num=1
+    genmoredata(num,widpix,heipix,A,r,b,I_b,edge)

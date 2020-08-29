@@ -136,15 +136,14 @@ def calculate_scales(target,binlist,signal,var):
             scalelengths.append(0)
         else:
             StoN=calculate_SN(binlist[bindex],signal,var)
-            if StoN==0:
-                print(binlist[bindex])
-                raise NameError(":p")
             geoc=geometric_center(binlist[bindex])
             geomcentres.append(geoc)
-            
+
             ## Define q to be some constant. Acc to Diehl&Statler, should not have effect
             q=np.pi ## for circular bins, which is generally what we are trying to achieve
             delta=np.sqrt(len(binlist[bindex])*target/(q*StoN))
+            if np.isnan(delta):
+                delta=1
             scalelengths.append(delta)
             
     geocarray=np.array(geomcentres)
@@ -191,17 +190,20 @@ def generate_wvt(binlist,signal,displayWVT=False):
 
 def generate_wvt2(binlist,signal,var,displayWVT=False):
     wvt=np.zeros_like(signal)
+    ston=np.zeros_like(signal)
     for bindex in range(len(binlist)):
         sig=calculate_signal(binlist[bindex],signal)
+        StoN=calculate_SN(binlist[bindex],signal,var)
         for point in binlist[bindex]:
-                wvt[point[0]][point[1]]=sig/len(binlist[bindex])
+            wvt[point[0]][point[1]]=sig/len(binlist[bindex])
+            ston[point[0]][point[1]]=StoN
     if displayWVT:
         fig,ax=plt.subplots()
         def onclick(event):
             x1,y1=event.xdata,event.ydata
             for binn in binlist:
                 if (int(y1+.5),int(x1+.5)) in binn:
-                    print("StoN is for this bin: "+str(calculate_SN(binn,signal,var)))
+                    print("StoN is for this bin: "+str(ston[binn[0][0]][binn[0][1]]))
                     print("other pixels in this bin: ")
                     for tup in binn:
                         print("x: "+str(tup[1])+", y:"+str(tup[0]))
@@ -211,7 +213,7 @@ def generate_wvt2(binlist,signal,var,displayWVT=False):
         image=ax.imshow(wvt,cmap="cubehelix")
         fig.colorbar(image)
         plt.show()
-    return wvt
+    return wvt, ston
             
 
 def numdif(x,y):
