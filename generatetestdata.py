@@ -23,7 +23,8 @@ def gendata(widpix,heipix,A,r,b,I_b,edge,sourcedir,objname):
     #+noise2*np.random.rand(len(xx),len(xx[0]))
     noise=model-model_w_noise
     var=model_w_noise
-    signal=model_w_noise - I_b
+    #signal=model_w_noise - I_b
+    signal=model_w_noise
 
     '''
     fig,ax = plt.subplots(1,1)
@@ -44,33 +45,35 @@ def gendata(widpix,heipix,A,r,b,I_b,edge,sourcedir,objname):
 
 ## generate variance, since all pixels are given by poisson dis, the variances=lambda
 
-def genmoredata(num,widpix,heipix,A,r,b,I_b,edge):
+def genmoredata(num,widpix,heipix,A,r,b,I_b,edge,subfolder):
     ## Assume that lambda follows I=A [1+(x^2+y^2)/r^2)]**(0.5-3b)with x,y dist from center
     if num==1:
         for back in I_b:
             for ed in edge:
-                sourcedir="/Users/pierre/Downloads/Aug15/"+str(widpix)+"x"+str(heipix)+"_peak"+str(A)+"/bg"+str(back)+"/"
-                objname="testdata"
+                sourcedir="/Users/pierre/Downloads/"+subfolder+"/"+str(widpix)+"x"+str(heipix)+"_peak"+str(A)+"/bg"+str(back)+"/unbinned"
+                objname="testdata2"
 
                 gendata(widpix,heipix,A,r,b,back,ed,sourcedir,objname)
     else:
         for m in range(num):
             for back in I_b:
                 for ed in edge:
-                    sourcedir="/Users/pierre/Downloads/Aug15/"+str(widpix)+"x"+str(heipix)+"_peak"+str(A)+"/bg"+str(back)+"/unbinned"
+                    sourcedir="/Users/pierre/Downloads/"+subfolder+"/"+str(widpix)+"x"+str(heipix)+"_peak"+str(A)+"/bg"+str(back)+"/unbinned"
                     objname="testdata"+str(m+1)
 
                     gendata(widpix,heipix,A,r,b,back,ed,sourcedir,objname)
 
 if __name__ == "__main__":
-    A=100
-    r=32
+    A=30
+    r=10
     b=0.67
-    I_b=[20,40,60,80,100,120] #background signal
-    edge=[35,70,105]
+    I_b=[20] #background signal
+    edge=[30,100]
 
     widpix=128
     heipix=128
 
+    subfolder="Sep4"
+
     num=1
-    genmoredata(num,widpix,heipix,A,r,b,I_b,edge)
+    genmoredata(num,widpix,heipix,A,r,b,I_b,edge,subfolder)

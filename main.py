@@ -27,17 +27,17 @@ def gettarget(initial=0):
     return target
 
 def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
-    binlist,init_generators=bin_accretion.cc_accretion(signal,var,target)
-    init_scalelengths=np.full(len(init_generators),1)
-    binlist=wvt_iteration.iteration_func(target,signal,var,init_generators,init_scalelengths,epsilon,weighting=weighting,displaywvt=False)
+    binlist,init_generators,init_scalelengths=bin_accretion.cc_accretion(signal,var,target)
+    binlist=wvt_iteration.iteration_func(target,signal,var,init_generators,init_scalelengths,epsilon,displaywvt=displayWVT)
     wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT)
-    vwvt=functions.generate_wvt(binlist,var,displayWVT=False)
+    vwvt=functions.generate_wvt(binlist,var)
     if displayWVT:
         maketargetscatter(target,binlist,signal,var)
-    blockout(target,wvt,ston)
-    return wvt,vwvt,ston
+    #blockout(target,wvt,ston)
+    return binlist
 
-def saveiteratedfits(target,wcsx,wvt,vwvt,ston,objname,sourcedir,subfolder,weighting=True):
+def saveiteratedfits(target,binlist,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
+    
     header=wcsx.to_header()
     hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
     hdul = fits.HDUList([hdu])
@@ -52,13 +52,25 @@ def saveiteratedfits(target,wcsx,wvt,vwvt,ston,objname,sourcedir,subfolder,weigh
         hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_var.fits",overwrite=True)
     else:
         hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_var.fits",overwrite=True)
-    
-    hdu3 = fits.PrimaryHDU(np.flipud(ston),header=header)
-    hdul3 = fits.HDUList([hdu3])
+
+def saveblockoutfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder,weighting=True):
+    wvt,ston=functions.generate_wvt2(binlist,signal,var)
+    vwvt=functions.generate_wvt(binlist,var)
+    blockout(target,wvt,ston)
+    header=wcsx.to_header()
+    hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
+    hdul = fits.HDUList([hdu])
     if weighting:
-        hdul3.writeto(sourcedir+"/"+subfolder+"/zston_"+objname+"_wit.fits",overwrite=True)
+        hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_sig.fits",overwrite=True)
     else:
-        hdul3.writeto(sourcedir+"/"+subfolder+"/zston_"+objname+"_cit.fits",overwrite=True)
+        hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_sig.fits",overwrite=True)
+
+    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=header)
+    hdul2 = fits.HDUList([hdu2])
+    if weighting:
+        hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_var.fits",overwrite=True)
+    else:
+        hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_var.fits",overwrite=True)
 
 def maketargetscatter(target,binlist,signal,var):
     fig,ax=plt.subplots()
@@ -93,10 +105,23 @@ def blockout(target,wvt,ston):
                 wvt[y][x]=0
                 #ston[y][x]=0
 
+def saveston(wcsx,ston,sourcedir,objname,subfolder="unbinned"):
+    header=wcsx.to_header()
+    hdu3 = fits.PrimaryHDU(np.flipud(ston),header=header)
+    hdul3 = fits.HDUList([hdu3])
+    hdul3.writeto(sourcedir+"/"+subfolder+"/zston_"+objname+".fits",overwrite=True)
+
+def saveassign(wcsx,assign,sourcedir,objname,subfolder="unbinned"):
+    header=wcsx.to_header()
+    hdu3 = fits.PrimaryHDU(np.flipud(assign),header=header)
+    hdul3 = fits.HDUList([hdu3])
+    hdul3.writeto(sourcedir+"/"+subfolder+"/"+objname+"_assigned.fits",overwrite=True)
+
 if __name__ == "__main__":
     wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
     objname=getname("_".join(objname.split("_")[:-1]))
     sourcedir="/".join(sourcedir.split("/")[:-1])
+    #saveston(wcsx,signal,var,sourcedir,objname,subfolder="unbinned")
     #objname="J024815-081723"
     ##empty for directly into sourcedir
     target=gettarget()
@@ -106,5 +131,8 @@ if __name__ == "__main__":
         target=-target
     else:
         weighting=True
-    wvt,vwvt,ston=mainfunc(signal,var,target,displayWVT=True,epsilon=-10)
-    saveiteratedfits(target,wcsx,wvt,vwvt,ston,objname,sourcedir,subfolder="target"+str(target))
+    binlist=mainfunc(signal,var,target,displayWVT=True,epsilon=-10)
+    
+    #saveiteratedfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder="target"+str(target))
+    #saveblockoutfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder="target"+str(target))
+    #saveston(wcsx,signal,var,sourcedir,objname+"_wit",subfolder="target"+str(target))

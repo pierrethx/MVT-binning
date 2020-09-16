@@ -20,7 +20,7 @@ sigfits=name+"_sig.fits"
 varfits=name+"_var.fits"
 stonfits="zston_"+name+".fits"
 
-bg=[20,40,60,80,100,120]
+bg=[20,60,100,120]
 target=[5,10,15,20]
 
 fig=plt.figure()
@@ -40,7 +40,7 @@ lis=[]
 for b in range(len(bg)):
     lis.append([])
     for t in range(len(target)):
-        signalname=source+"/bg"+str(bg[b])+"/target"+str(target[t])+"/"+stonfits
+        signalname=source+"/bg"+str(bg[b])+"/target"+str(target[t])+"/"+sigfits
         #varname=source+"/bg"+bg[b]+"/target"+target[t]+"/"+varfits
 
         with fits.open(signalname) as hdul:
@@ -54,7 +54,8 @@ for b in range(len(bg)):
         bum=plt.axes([(1-scale)/2+scale*b/len(bg),(1-scale)/2+scale*t/len(target),scale/len(bg),scale/len(target)])
         lis[b].append(bum)
         #lis[b][t].annotate(str(bg[b])+" at "+str(target[t]), xy=(0, 0), xytext=(0,0))
-        bum.imshow(signal,cmap="cubehelix",vmin=0,vmax=30)
+        #bum.imshow(signal,cmap="cubehelix",vmin=0,vmax=30)
+        bum.imshow(signal,cmap="cubehelix",vmin=0,vmax=100)
         '''
         t=np.linspace(0,2*np.pi,100)
         x=edgec*np.cos(t)+len(signal[0])/2
@@ -65,5 +66,7 @@ for b in range(len(bg)):
         bum.set_yticks([])
 cax=plt.axes([(9+7*scale)/16,(1-scale)/2,(1-scale)/8,scale])
 
-clbr=plt.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin=0, vmax=30), cmap=mpl.cm.get_cmap('cubehelix')),cax=cax)
+#clbr=plt.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin=0, vmax=30), cmap=mpl.cm.get_cmap('cubehelix')),cax=cax)
+clbr=plt.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin=0, vmax=100), cmap=mpl.cm.get_cmap('cubehelix')),cax=cax)
+
 plt.show()

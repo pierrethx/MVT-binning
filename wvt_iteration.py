@@ -47,7 +47,7 @@ def next_iteration2(target,signal,var,geocarray,scalearray,weighting=True):
         append_validate((point[0],point[1]+1),viable[g],assign)
         append_validate((point[0],point[1]-1),viable[g],assign)
         #print(str(int(g*100/len(geocarray)))+" percent done with init pass")
-    while checkneg(assign) or viabempty(viable):
+    while checkneg(assign) or viabunempty(viable):
         for g in range(len(geocarray)):
             prune=True
             while prune and len(viable[g])>0:
@@ -70,11 +70,13 @@ def next_iteration2(target,signal,var,geocarray,scalearray,weighting=True):
                         append_validate((point[0]-1,point[1]),viable[g],assign)
                         append_validate((point[0],point[1]+1),viable[g],assign)
                         append_validate((point[0],point[1]-1),viable[g],assign)
+                    else:
+                        pass
     binlist=[ [] for _ in range(len(geocarray)) ]
     for j in range(len(assign)):
         for i in range(len(assign[0])):
             binlist[assign[j][i]].append((j,i))
-
+    '''
     cancelled=0
     
     for r in range(len(binlist)):
@@ -93,6 +95,9 @@ def next_iteration2(target,signal,var,geocarray,scalearray,weighting=True):
     else:
         geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
         return binlist,geocarray,scalearray
+    '''
+    binlist,geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
+    return binlist,geocarray,scalearray
 
     
 
@@ -104,12 +109,11 @@ def checkneg(assign):
     else:
         return False
 
-def viabempty(viable):
+def viabunempty(viable):
     for binn in viable:
         if len(binn)>0:
             return True
-        else: 
-            return False
+    return False
 
 def append_validate(candidate,target,check):
     try:
@@ -133,9 +137,8 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon,weighting=True
     while repeat:
         print("another iteration")
         wvt2=np.copy(wvt)
-        binlist,geocarray,scalearray=next_iteration2(target,signal,var,geocarray,scalearray,weighting=weighting)
+        binlist,geocarray,scalearray=next_iteration2(target,signal,var,geocarray,scalearray)
         wvt=functions.generate_wvt(binlist,signal,displayWVT=displaywvt)
-        print(scalearray)
 
         if epsilon<0:
             numit+=1

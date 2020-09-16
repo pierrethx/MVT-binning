@@ -103,7 +103,8 @@ def cc_accretion(signal,var,target):
     
     assign=np.full_like(ston,-1)
             
-    density=ston**2
+    #density=ston*np.abs(ston)
+    density=ston*ston
     cellsleft=np.count_nonzero(assign == -1)
     print(cellsleft)
 
@@ -114,6 +115,7 @@ def cc_accretion(signal,var,target):
     validateappend(viable,(supercentroid[0],supercentroid[1]),assign)
     binlist=[]
     bcentroids=[]
+    rcentroids=[]
     rebinlist=[]
     
     ## in case this borks np.count_nonzero(array == value) to return -1 in assign
@@ -135,7 +137,7 @@ def cc_accretion(signal,var,target):
 
             Rmax=0.3
             newbin=current+[nextpoint]
-            ncentroid, nmass=functions.weighted_centroid(newbin,density)
+            nmass=binmass+density[nextpoint[0]][nextpoint[1]]
             ## replacing weighted centroids with geometric centers as suggested by Diehl 
             ## in Cappellari's implementation to address negative data
             ncentroid=functions.geometric_center(newbin)
@@ -159,6 +161,7 @@ def cc_accretion(signal,var,target):
         success=0.8
         if binmass/(target**2)<success:
             rebinlist.append(current)
+            rcentroids.append(centroid)
         else:
             binlist.append(current)
             bcentroids.append(centroid)
@@ -175,9 +178,9 @@ def cc_accretion(signal,var,target):
     ## At this point, binlist should contain all of the original points
     ## Now I want to iterate through binlist to get the list of generators. This is really what this was for
     ## Though now is as good of a time as any to create the CVT
-    geocarray=functions.calculate_cvt(target,binlist,signal,var)
+    binlist,geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
     
-    return binlist,geocarray
+    return binlist,geocarray,scalearray
     
 
 if __name__ == "__main__":
@@ -186,5 +189,9 @@ if __name__ == "__main__":
     mid=time.time()
     binlist,geocarray=cc_accretion(signal,var,target)
     print("elapsed time spread method"+str(time.time()-mid))
-    wvt=functions.generate_wvt(binlist,signal,displayWVT=True)
+    wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT=True)
+    fig,ax=plt.subplots()
+    g=ax.imshow(ston,cmap="cubehelix", vmin=np.nanmin(ston),vmax=30)
+    plt.colorbar(g)
+    plt.show()
     

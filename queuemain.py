@@ -1,4 +1,4 @@
-import bin_accretion,main
+import bin_accretion,main,functions
 
 if __name__ == "__main__":
     sourcelist=[]
@@ -39,6 +39,15 @@ if __name__ == "__main__":
             else:
                 weighting=True
             subfolder="target"+str(targlist[m])
-            wvt,vwvt,ston=main.mainfunc(siglist[i],varlist[i],targlist[m],weighting=weighting,displayWVT=False,epsilon=-10)
-            main.saveiteratedfits(targlist[m],wscxlist[i],wvt,vwvt,ston,objlist[i],sourcelist[i],subfolder=subfolder,weighting=weighting)
+            #main.saveston(wscxlist[i],siglist[i],varlist[i],sourcelist[i],objlist[i],subfolder="unbinned")
+            binlist=main.mainfunc(siglist[i],varlist[i],targlist[m],weighting=weighting,displayWVT=False,epsilon=-10)
+            
+            #main.saveblockoutfits(targlist[m],binlist,wscxlist[i],siglist[i],varlist[i],objlist[i],sourcelist[i],subfolder=subfolder)
+            wvt,ston=functions.generate_wvt2(binlist,siglist[i],varlist[i])
+            vwvt=functions.generate_wvt(binlist,varlist[i])
+            main.saveiteratedfits(targlist[m],binlist,wscxlist[i],wvt,vwvt,objlist[i],sourcelist[i],subfolder=subfolder)
+            main.saveston(wscxlist[i],ston,sourcelist[i],objlist[i],subfolder=subfolder)
+            assign=functions.assign(binlist,siglist[i])
+            main.saveassign(wscxlist[i],assign,sourcelist[i],objlist[i],subfolder=subfolder)
+
 print("Bye Bye!")

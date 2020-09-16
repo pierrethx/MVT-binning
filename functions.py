@@ -104,7 +104,7 @@ def checktoadd(point,binn,weightmap,target,binmass):
 def redistribute(binlist,rebinlist,binfo,weightmap):
     for bindex in range(len(rebinlist)):
         for poindex in range(len(rebinlist[bindex])):
-            ## Finding the index of the bin with the closest centroid
+            ## Finding the index of the bin with the closest center
             centroind=closest_index(rebinlist[bindex][poindex],binfo,weightmap)
             ## We add the point to that bin
             ## Don't bother with binfo/binm, last used here:
@@ -129,27 +129,39 @@ def calculate_scales(target,binlist,signal,var):
     
     geomcentres=[]
     scalelengths=[]
+    binlist2=[]
     for bindex in range(len(binlist)):
         if len(binlist[bindex])==0:
-            print("issue aaaahhhhhh")
-            geomcentres.append((0,0))
-            scalelengths.append(0)
+            pass
         else:
+            
+
             StoN=calculate_SN(binlist[bindex],signal,var)
             geoc=geometric_center(binlist[bindex])
-            geomcentres.append(geoc)
+            
 
             ## Define q to be some constant. Acc to Diehl&Statler, should not have effect
             q=np.pi ## for circular bins, which is generally what we are trying to achieve
             delta=np.sqrt(len(binlist[bindex])*target/(q*StoN))
-            if np.isnan(delta):
-                delta=1
             scalelengths.append(delta)
-            
+            geomcentres.append(geoc)
+            binlist2.append(binlist[bindex])
+    '''
+            if not np.isnan(delta):
+                scalelengths.append(delta)
+                geomcentres.append(geoc)
+                binlist2.append(binlist[bindex])
+            else:
+                print("DELETED")
+                unbinlist.append(binlist[bindex])
+    redistribute(binlist2,unbinlist,geomcentres,signal)
+    '''
+        
+
     geocarray=np.array(geomcentres)
     scalearray=np.array(scalelengths)
     
-    return geocarray,scalearray
+    return binlist2,geocarray,scalearray
 
 def calculate_cvt(target,binlist,signal,var):
 
@@ -203,10 +215,11 @@ def generate_wvt2(binlist,signal,var,displayWVT=False):
             x1,y1=event.xdata,event.ydata
             for binn in binlist:
                 if (int(y1+.5),int(x1+.5)) in binn:
-                    print("StoN is for this bin: "+str(ston[binn[0][0]][binn[0][1]]))
+                    
                     print("other pixels in this bin: ")
                     for tup in binn:
                         print("x: "+str(tup[1])+", y:"+str(tup[0]))
+                    print("StoN is for this bin: "+str(ston[binn[0][0]][binn[0][1]]))
                     break
         cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
         fig.canvas.mpl_connect('button_press_event',onclick)
@@ -214,7 +227,36 @@ def generate_wvt2(binlist,signal,var,displayWVT=False):
         fig.colorbar(image)
         plt.show()
     return wvt, ston
-            
+
+def generate_wvt3(binlist,signal,var,scalearray,displayWVT=False):
+    wvt=np.zeros_like(signal)
+    ston=np.zeros_like(signal)
+    for bindex in range(len(binlist)):
+        sig=calculate_signal(binlist[bindex],signal)
+        StoN=calculate_SN(binlist[bindex],signal,var)
+        for point in binlist[bindex]:
+            wvt[point[0]][point[1]]=sig/len(binlist[bindex])
+            ston[point[0]][point[1]]=StoN
+    if displayWVT:
+        fig,ax=plt.subplots()
+        def onclick(event):
+            x1,y1=event.xdata,event.ydata
+            for bint in range(len(binlist)):
+                if (int(y1+.5),int(x1+.5)) in binlist[bint]:
+                    binn=binlist[bint]
+                    
+                    print("other pixels in this bin: ")
+                    for tup in binn:
+                        print("x: "+str(tup[1])+", y:"+str(tup[0]))
+                    print("StoN is for this bin: "+str(ston[binn[0][0]][binn[0][1]]))
+                    print("scale for this bin: "+str(scalearray[bint]))
+                    break
+        cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
+        fig.canvas.mpl_connect('button_press_event',onclick)
+        image=ax.imshow(ston,cmap="cubehelix")
+        fig.colorbar(image)
+        plt.show()
+    return wvt, ston      
 
 def numdif(x,y):
     diff=[]
@@ -246,3 +288,10 @@ def lerp(x):
         arr.append((x[i]+x[i-1])/2)
         arr.append(x[i])
     return np.array(arr)
+
+def assign(binlist,signal):
+    assign=np.zeros_like(signal)
+    for i in range(len(binlist)):
+        for k in binlist[i]:
+            assign[k[0]][k[1]]=i
+    return assign

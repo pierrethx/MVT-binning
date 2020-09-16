@@ -292,9 +292,9 @@ def radmethod(signal,var,wcsx,show=False):
     yp=circularb(xa,popt[0],popt[1],popt[2])
     if show:
         fig,ax = plt.subplots()
-        ax.set_title("Average radial profile")
-        ax.set_xlabel("radial distance from weighted center (px)")
-        ax.set_ylabel("counts")
+        #ax.set_title("Average radial profile")
+        #ax.set_xlabel("radial distance from weighted center (px)")
+        #ax.set_ylabel("counts")
         line1,=ax.plot(xa, ya, color="black")
         ax.set_xlim(0,np.nanmax(xa))
         ax.set_ylim(0,np.nanmax(averages)*1.1)
@@ -312,7 +312,8 @@ def radmethod(signal,var,wcsx,show=False):
     print(med)
     if show:
         ax.plot([xa[j],xa[j]],[np.nanmin(ya),np.nanmax(ya)],color="green",linestyle="dashed")
-        ax.plot([med,med],[np.nanmin(ya),np.nanmax(ya)],color="gold",linestyle="dashed")
+        ax.plot([med,med],[np.nanmin(ya),np.nanmax(ya)],color="orange",linestyle="dashed")
+        ax.plot([60,60],[np.nanmin(ya),np.nanmax(ya)],color="black")
         plt.show()
 
     
