@@ -99,7 +99,7 @@ def cc_accretion(signal,var,target):
 
     ## this is the signal-to-noise for each pixel
     ston=signal/np.sqrt(np.abs(var))
-
+    var[signal<=0]=0
     
     assign=np.full_like(ston,-1)
             
@@ -143,7 +143,8 @@ def cc_accretion(signal,var,target):
             ncentroid=functions.geometric_center(newbin)
             rmax=sp.distance.cdist([ncentroid],newbin).max()
             R=rmax*np.sqrt(np.pi/len(newbin))-1
-            if R<=Rmax and np.abs(binmass-target**2)>np.abs(nmass-target**2):
+            #if R<=Rmax and np.abs(binmass-target**2)>np.abs(nmass-target**2): here we are saying that the new mass brings the bin closer to the target
+            if R<=Rmax and not np.isnan(nmass) and np.abs(binmass-target**2)>=np.abs(nmass-target**2):
                 current.append(nextpoint)
                 viablecell.remove(nextpoint)
                 if viable.count(nextpoint)>0:
@@ -158,8 +159,9 @@ def cc_accretion(signal,var,target):
                 accrete= len(viablecell)>0
             else: 
                 accrete=False
+                
         success=0.8
-        if binmass/(target**2)<success:
+        if binmass/(target**2)<success or np.isnan(binmass):
             rebinlist.append(current)
             rcentroids.append(centroid)
         else:
@@ -173,12 +175,16 @@ def cc_accretion(signal,var,target):
 
     print("Redistribution time")
 
+    #wvt,ston=functions.generate_wvt3(binlist+rebinlist,signal,var,np.full(len(binlist)+len(rebinlist),1),True)
+
     ## Then we assign each unsuccessfully binned pixel to a successfully bin
     functions.redistribute(binlist,rebinlist,bcentroids,density)
     ## At this point, binlist should contain all of the original points
     ## Now I want to iterate through binlist to get the list of generators. This is really what this was for
     ## Though now is as good of a time as any to create the CVT
     binlist,geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
+    
+    #wvt,ston=functions.generate_wvt3(binlist,signal,var,scalearray,True)
     
     return binlist,geocarray,scalearray
     

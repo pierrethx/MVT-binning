@@ -291,7 +291,9 @@ def lerp(x):
 
 def assign(binlist,signal):
     assign=np.zeros_like(signal)
-    for i in range(len(binlist)):
-        for k in binlist[i]:
+    binlist2=binlist.copy()
+    np.random.shuffle(binlist2)
+    for i in range(len(binlist2)):
+        for k in binlist2[i]:
             assign[k[0]][k[1]]=i
     return assign

@@ -138,15 +138,15 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon,weighting=True
         print("another iteration")
         wvt2=np.copy(wvt)
         binlist,geocarray,scalearray=next_iteration2(target,signal,var,geocarray,scalearray)
-        wvt=functions.generate_wvt(binlist,signal,displayWVT=displaywvt)
+        wvt,ston=functions.generate_wvt3(binlist,signal,var,scalearray,displayWVT=displaywvt)
+        difference=np.sqrt(np.sum((wvt-wvt2)**2)/np.sum(var))
+        print("dif",difference)
 
         if epsilon<0:
             numit+=1
             if numit+epsilon>=0:
                 repeat=False
         else:
-            difference=np.sqrt(np.sum((wvt-wvt2)**2))
-            print("dif",difference)
             repeat=difference>epsilon
 
     print("elapsed time "+str(time.time()-start))

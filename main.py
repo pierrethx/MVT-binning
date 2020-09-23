@@ -53,9 +53,7 @@ def saveiteratedfits(target,binlist,wcsx,wvt,vwvt,objname,sourcedir,subfolder,we
     else:
         hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_var.fits",overwrite=True)
 
-def saveblockoutfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder,weighting=True):
-    wvt,ston=functions.generate_wvt2(binlist,signal,var)
-    vwvt=functions.generate_wvt(binlist,var)
+def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
     blockout(target,wvt,ston)
     header=wcsx.to_header()
     hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
@@ -119,6 +117,14 @@ def saveassign(wcsx,assign,sourcedir,objname,subfolder="unbinned"):
 
 if __name__ == "__main__":
     wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
+
+    signal2=np.copy(signal)
+    var2=np.copy(var)
+    #var2[signal2<=0]=1e10
+    signal2[signal2<=0]=0
+    
+    
+
     objname=getname("_".join(objname.split("_")[:-1]))
     sourcedir="/".join(sourcedir.split("/")[:-1])
     #saveston(wcsx,signal,var,sourcedir,objname,subfolder="unbinned")
@@ -131,7 +137,9 @@ if __name__ == "__main__":
         target=-target
     else:
         weighting=True
-    binlist=mainfunc(signal,var,target,displayWVT=True,epsilon=-10)
+    binlist=mainfunc(signal2,var2,target,displayWVT=False,epsilon=-10)
+    
+    wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1),True)
     
     #saveiteratedfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder="target"+str(target))
     #saveblockoutfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder="target"+str(target))

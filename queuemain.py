@@ -1,4 +1,5 @@
 import bin_accretion,main,functions
+import numpy as np
 
 if __name__ == "__main__":
     sourcelist=[]
@@ -40,12 +41,20 @@ if __name__ == "__main__":
                 weighting=True
             subfolder="target"+str(targlist[m])
             #main.saveston(wscxlist[i],siglist[i],varlist[i],sourcelist[i],objlist[i],subfolder="unbinned")
-            binlist=main.mainfunc(siglist[i],varlist[i],targlist[m],weighting=weighting,displayWVT=False,epsilon=-10)
+
+            signal2=np.copy(siglist[i])
+            var2=np.copy(varlist[i])
+            #var2[signal2<=0]=1e10
+            signal2[signal2<=0]=0
+
+            binlist=main.mainfunc(signal2,var2,targlist[m],displayWVT=False,epsilon=-10)
             
             #main.saveblockoutfits(targlist[m],binlist,wscxlist[i],siglist[i],varlist[i],objlist[i],sourcelist[i],subfolder=subfolder)
-            wvt,ston=functions.generate_wvt2(binlist,siglist[i],varlist[i])
+            #wvt,ston=functions.generate_wvt2(binlist,siglist[i],varlist[i])
+            wvt,ston=functions.generate_wvt3(binlist,siglist[i],varlist[i],np.full(len(binlist),1))
             vwvt=functions.generate_wvt(binlist,varlist[i])
-            main.saveiteratedfits(targlist[m],binlist,wscxlist[i],wvt,vwvt,objlist[i],sourcelist[i],subfolder=subfolder)
+            #main.saveiteratedfits(targlist[m],binlist,wscxlist[i],wvt,vwvt,objlist[i],sourcelist[i],subfolder=subfolder)
+            main.saveblockoutfits(targlist[m],ston,wscxlist[i],wvt,vwvt,objlist[i],sourcelist[i],subfolder=subfolder)
             main.saveston(wscxlist[i],ston,sourcelist[i],objlist[i],subfolder=subfolder)
             assign=functions.assign(binlist,siglist[i])
             main.saveassign(wscxlist[i],assign,sourcelist[i],objlist[i],subfolder=subfolder)
