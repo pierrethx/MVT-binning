@@ -9,7 +9,7 @@ from astropy.io import fits
 import functions,bin_accretion,wvt_iteration,main,radial_profile
 from scipy.ndimage.measurements import center_of_mass
 from scipy.optimize import curve_fit
-import time
+import time,os
 
 def endnumber(stri):
     beg=-1
@@ -18,7 +18,7 @@ def endnumber(stri):
     if beg==-1:
         return 0
     else:
-        print(int(stri[beg+1:]))
+        print("length: "+(stri[beg+1:]))
         return int(stri[beg+1:])
 
 def alignwcs(wcs,angles):
@@ -59,20 +59,31 @@ def alignwcs(wcs,angles):
     directions=np.array([np.sin(wangs),np.cos(wangs)]).T
     return directions,tags
 
-def qradial(wcsxlist,siglist,varlist,sourcelist,objlist):
+def qradial(wcsxlist,siglist,varlist,sourcelist,objlist,outputlist=None):
     datapoints=[]
     for i in range(len(sourcelist)):
         signal=siglist[i]
         var=varlist[i]
         wcsx=wcsxlist[i]
+        output=[]
 
-        edgex,edge2,edgec=radial_profile.radmethod(signal,var,wcsx,show=False)
+        edgex,edge2,edgec,edgea=radial_profile.radmethod(signal,var,wcsx,show=False,output=output)
+        try:
+            outputlist.append(output)
+        except:
+            pass
+        print(sourcelist[i])
+        if "block" in objlist[i]:
+            datapoint=[endnumber(sourcelist[i]),endnumber(objlist[i].split("_")[2]),edgex,endnumber(sourcelist[i].split("/")[-2]),edge2,edgec,edgea]
+        else:
+            datapoint=[endnumber(sourcelist[i]),endnumber(objlist[i].split("_")[1]),edgex,endnumber(sourcelist[i].split("/")[-2]),edge2,edgec,edgea]
 
-        datapoint=[endnumber(sourcelist[i]),endnumber(objlist[i].split("_")[1]),edgex,endnumber(sourcelist[i].split("/")[-2]),edge2,edgec]
+        print(datapoint)
+        """[binning,seededge,firstpassedge,exptime,foundedge,stonedgem,stonedgea]"""
         datapoints.append(datapoint)
 
     data=np.array(datapoints)
-
+    '''
     fig, ax = plt.subplots()
     cmap = cm.get_cmap('inferno')
     linearray=[]
@@ -83,7 +94,7 @@ def qradial(wcsxlist,siglist,varlist,sourcelist,objlist):
     xver=np.linspace(0,1000,2)
     edgelim,=ax.plot(xver,xver*0-10,color="red",linestyle="dashed")
 
-    axisdict = {'target': data[:,0], 'seed edge': data[:,1], 'rough edge': data[:,2], 'background': data[:,3],'found edge':data[:,4],"stonedge":data[:,5]}
+    axisdict = {'target': data[:,0], 'seed edge': data[:,1], 'rough edge': data[:,2], 'background': data[:,3],'found edge':data[:,4],"stonedge":data[:,5],"stonedgea":data[:,6]}
 
     for m in datam:
         l, = ax.plot(m, m,markersize=8,marker="o",color=cmap(m/np.nanmax(datam)))
@@ -142,24 +153,74 @@ def qradial(wcsxlist,siglist,varlist,sourcelist,objlist):
     
 
     plt.show()
+    '''
+
+    return data
+
+def tabulate(pathfile,headers,rows,rel=False):
+    f=open(pathfile,"w+")
+    f.write("\\begin{tab"+"ular}{|c|"+"|c"*len(headers)+"|}\n \\hline\n")
+    f.write("& ".join(headers)+"\\\\ \n \\hline \n")
+    
+    
+    cols=[endnumber(stri) for stri in headers]
+    print(cols)
+    shortdata=np.zeros(shape=(len(rows),len(cols)))
+    for r in range(len(rows)):
+        shortdata[r][0]=rows[r]
+    for point in data:
+        if rel:
+            shortdata[rows.index(point[3])][cols.index(point[1])]=round(point[6]/point[1],3)
+        else:
+            shortdata[rows.index(point[3])][cols.index(point[1])]=round(point[6],3)
+    for line in shortdata:
+        f.write(" & ".join([str(n) for n in line])+"\\\\ \n")
+    f.write("\\hline\n\\end{tab"+"ular}")
+
+def tabulate2(pathfile,headers,rows,row2,rel=False):
+    f=open(pathfile,"w+")
+    f.write("\\begin{tab"+"ular}{|c|"+"|c"*len(headers)+"|}\n \\hline\n")
+    f.write("& ".join(headers)+"\\\\ \n \\hline \n")
+    
+    
+    cols=[endnumber(stri) for stri in headers]
+    print(cols)
+    shortdata=np.zeros(shape=(len(rows),len(cols)))
+    namelist=[]
+    for r in range(len(rows)):
+        namelist.append(str(rows[r])+", "+str(row2[r]))
+        shortdata[r][0]=-1
+    print(namelist)
+    for point in data:
+        if rel:
+            shortdata[namelist.index(str(point[3])+", "+str(int(point[0])))][cols.index(point[1])]=round(point[6]/point[1],3)
+        else:
+            shortdata[namelist.index(str(point[3])+", "+str(int(point[0])))][cols.index(point[1])]=round(point[6],3)
+    for r in range(len(shortdata)):
+        f.write(namelist[r]+" & "+" & ".join([str(n) for n in shortdata[r] if np.isnan(n) or n>=0])+"\\\\ \n")
+    f.write("\\hline\n\\end{tab"+"ular}")
 
 if __name__ == "__main__":
-    sourcelist=[]
-    wcsxlist=[]
-    siglist=[]
-    varlist=[]
-    objlist=[]
-    contqueue=True
-    while contqueue:
-        try:
-            wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
-            sourcelist.append(sourcedir)
-            objlist.append(objname)
-            wcsxlist.append(wcsx)
-            siglist.append(signal)
-            varlist.append(var)
-        except:
-            contqueue=False
+    wcsxlist,siglist,varlist,sourcelist,objlist=bin_accretion.minitialize()
+    fname=main.getname(sourcelist[0].split("/")[-1]+".txt")
     print("Files loaded!")
-    qradial(wcsxlist,siglist,varlist,sourcelist,objlist)
+    data=qradial(wcsxlist,siglist,varlist,sourcelist,objlist)
+    """[binning,seededge,firstpassedge,exptime,foundedge,stonedgem,stonedgea]"""
+    
+    path="/".join(sourcelist[0].split("/")[:-2])+"/chart/"
+    
+    headers=["expt, bin","edge50","edge75","(none) edge100"]
+    rows=[1e2,1e2,1e2,1e2,1e4,1e4,1e4,1e4,1e6,1e6,1e6,1e6]
+    row2=[0,3,5,10,0,3,5,10,0,3,5,10]
+
+    tabulate2(path+fname,headers,rows,row2,rel=False)
+    tabulate2(path+"r-"+fname,headers,rows,row2,rel=True)
+    '''
+    for fil in range(len(data)):
+        print(objlist[fil],end="  ")
+        print("fitedge",end=" ")
+        print(data[fil][4],end="  ")
+        print("stonedge",end=" ")
+        print(data[fil][-1])
+        '''
     print("Bye Bye!")

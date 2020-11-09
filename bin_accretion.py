@@ -82,6 +82,119 @@ def initialize(enternew=True):
     
     return wcsx,signal,var,sourcedir,objname
 
+def minitialize():
+    wcsxlist=[]
+    signallist=[]
+    varlist=[]
+    sourcedirlist=[]
+    objnamelist=[]
+    
+
+    validatesignal=True
+    while validatesignal:
+        root=tkinter.Tk()
+        root.withdraw()
+        placeholder= askopenfilename(message="Select signal",multiple=True)
+        root.update()
+        root.destroy()
+        fails=[]
+        if type(placeholder) is tuple:
+            if len(placeholder)>1:
+                num=0
+                placeholder=list(placeholder)
+                while len(placeholder)>0:
+                    try:
+                        if ".fits" in placeholder[0]:
+                            i=1
+                            print("_".join(placeholder[0].split("_")[:-1]))
+                            while not "_".join(placeholder[0].split("_")[:-1]) in placeholder[i]:
+                                print(placeholder[i])
+                                i+=1
+
+                            if "var" in placeholder[0].lower():
+                                signalname=placeholder.pop(i)
+                                varname=placeholder.pop(0)
+                            else:
+                                varname=placeholder.pop(i)
+                                signalname=placeholder.pop(0)
+
+                            sourcedir="/".join(signalname.split("/")[:-1])
+                            objname=signalname.split("/")[-1]
+                            with fits.open(signalname) as hdul:
+                                signal=np.flipud(hdul[0].data)
+                                wcsx=wcs.WCS(hdul[0].header)
+                            with fits.open(varname) as hdul:
+                                var=np.flipud(hdul[0].data)
+                            wcsxlist.append(wcsx)
+                            signallist.append(signal)
+                            varlist.append(var)
+                            sourcedirlist.append(sourcedir)
+                            objnamelist.append(objname)
+                            num+=1
+                        else:
+                            raise NameError("")
+                    except:
+                        fails.append(placeholder.pop(0))
+                if len(fails)>0:
+                    print("rejected: "+str(fails))
+                print("Good "+str(num)+" pairs of files! Moving on")
+
+            elif len(placeholder)==1:
+                validatevar=True
+                if ".fits" in placeholder[0]:
+                    signalname=placeholder[0]
+                    print("Good signal file! Moving on")
+                    while validatevar:
+                        root=tkinter.Tk()
+                        root.withdraw()
+                        place= askopenfilename(message="Select variance")
+                        root.update()
+                        root.destroy()
+                        print("place: ",place)
+                        if ".fits" in place:
+                            varname=place
+                            print("Good file! Moving on")
+                            validatevar=False
+                            validatesignal=False
+                        elif place.strip()=="":
+                            print("var input canceled, back to sig input")
+                            validatevar=False
+                        else:
+                            print("invalid var file type")
+                else:
+                    print("Invalid sig file type")
+            else:
+                if ".fits" in placeholder[0] and ".fits" in placeholder[1]:
+                    if "var" in placeholder[0].lower() or "sig" in placeholder[1].lower():
+                        varname=placeholder[0]
+                        signalname=placeholder[1]
+                        validatesignal=False
+                        print("Good files! Moving on")
+                    else:
+                        signalname=placeholder[0]
+                        varname=placeholder[1]
+                        validatesignal=False
+                        print("Good files! Moving on")
+                    sourcedir="/".join(signalname.split("/")[:-1])
+                    objname=signalname.split("/")[-1]
+                    with fits.open(signalname) as hdul:
+                        signal=np.flipud(hdul[0].data)
+                        wcsx=wcs.WCS(hdul[0].header)
+                    with fits.open(varname) as hdul:
+                        var=np.flipud(hdul[0].data)
+                    wcsxlist.append(wcsx)
+                    signallist.append(signal)
+                    varlist.append(var)
+                    sourcedirlist.append(sourcedir)
+                    objnamelist.append(objname)
+                else:
+                    print("Invalid file type")
+        else:
+            validatesignal=False
+
+    return wcsxlist,signallist,varlist,sourcedirlist,objnamelist
+
+
 def validateappend(target,candidate,check):
     ## candidate is as (y,x)
     try:
@@ -191,13 +304,14 @@ def cc_accretion(signal,var,target):
 
 if __name__ == "__main__":
     wcsx,signal,var,sourcedir,objname=initialize(enternew=True)
-    target=5
+    target=300
     mid=time.time()
-    binlist,geocarray=cc_accretion(signal,var,target)
+    binlist,geocarray,scalearray=cc_accretion(signal,var,target)
     print("elapsed time spread method"+str(time.time()-mid))
-    wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT=True)
+    #wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT=True)
+    wvt,ston=functions.generate_wvt4(binlist,signal,var,[1]*len(binlist),displayWVT=True)
     fig,ax=plt.subplots()
-    g=ax.imshow(ston,cmap="cubehelix", vmin=np.nanmin(ston),vmax=30)
+    g=ax.imshow(ston,cmap="cubehelix", vmin=np.nanmin(ston))
     plt.colorbar(g)
     plt.show()
     

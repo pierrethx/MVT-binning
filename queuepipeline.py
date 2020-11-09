@@ -1,56 +1,100 @@
-import bin_accretion,main,qradial,queuemain
+import bin_accretion,main,qradial,queuemain,generatetestdata,radial_profile,functions
+import numpy as np
+import matplotlib.pyplot as plt
+
+def tabulate(pathfile,slist,obj,first,sim,maxi,nedges,conc):
+    f=open(pathfile,"w+")
+    f.write("\\begin{tab"+"ular}{|c||c|c|c|}\n \\hline\n")
+    f.write("file & recovered edge & simulated edge & sim maximum edge & num nan edges& conclusion\\\\ \n \\hline \n")
+    
+    for i in range(len(obj)):
+        f.write(slist[i].split("/")[-1]+"/"+obj[i]+" & "+first[i]+" & "+sim[i]+" & "+maxi[i]+" & "+nedges[i]+" & "+conc[i]+" \\\\ \n")
+    f.write("\\hline\n\\end{tab"+"ular}")
 
 if __name__ == "__main__":
-    superwcsxlist=[]
-    supersiglist=[]
-    supervarlist=[]
-    supersourcelist=[]
-    superobjlist=[]
-
-    wcsxlist=[]
-    siglist=[]
-    varlist=[]
-    sourcelist=[]    
-    objlist=[]
-    targlist=[]
-    contqueue=True
-    targhold=0
     
-    while contqueue:
-        try:
-            wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
-            objname=main.getname("_".join(objname.split("_")[:-1]))
-            sourcelist.append("/".join(sourcedir.split("/")[:-1]))
-            wcsxlist.append(wcsx)
-            siglist.append(signal)
-            varlist.append(var)
-            objlist.append(objname)
-        except:
-            contqueue=False
-    contqueue=True
-    while contqueue:
-        try:
-            target=main.gettarget(targhold)
-            targlist.append(target)
-        except:
-            contqueue=False
-    print("Files loaded!")
-    for i in range(len(sourcelist)):
-        for m in range(len(targlist)):
-            if targlist[m]<0:
-                #weighting=False 
-                """Would be false except i havent fixed cvt"""
-                weighting=True
-                targlist[m]=-targlist[m]
+
+    wcsxlist,siglist,varlist,sourcelist,objlist=bin_accretion.minitialize()
+    outputlist=[]
+
+
+    data=qradial.qradial(wcsxlist,siglist,varlist,sourcelist,objlist,outputlist)
+    """[binning,seededge,firstpassedge,exptime,foundedge,stonedgem,stonedgea]"""
+    # outputlist is a list of popts, so [popt1,popt2,...]
+
+    print(outputlist)
+
+    firstlist=[]
+    maxlist=[]
+    simlist=[]
+    numnanedges=[]
+    conclist=[]
+    numtimes=5
+
+    for fil in range(len(data)):
+        first=data[fil][6]
+        firstlist.append(str(round(first,3)))
+        if np.isnan(first) or first<1:
+            maxlist.append(np.nan)
+            simlist.append(np.nan)
+            conclist.append("no edge")
+        else:
+            edges=[]
+            edges2=[]
+            nedge=0
+            for too in range(numtimes):
+                expt=np.nanmax(siglist[fil]/varlist[fil])
+                Bg=np.average(expt*varlist[fil]-siglist[fil],weights=np.ma.masked_where(np.isnan(siglist[fil]/np.sqrt(varlist[fil])),siglist[fil]/np.sqrt(varlist[fil])))
+
+                popt=outputlist[fil]
+                print(first)
+                center=radial_profile.getcenter(siglist[fil])
+                si,va=generatetestdata.ogenerator(len(siglist[fil]),len(siglist[fil][0]),center,popt[0],popt[1],popt[2],Bg,expt,np.nan)
+
+                if data[fil][0]==0:
+                    wvt=si
+                    vwvt=va
+                else:
+                    binlist=main.mainfunc(si,va,data[fil][0],displayWVT=False,epsilon=-10)
+                    wvt,ston=functions.generate_wvt3(binlist,si,va,np.full(len(binlist),1))
+                    vwvt=functions.generate_wvt(binlist,va)
+                edgex,edge2,edgec,edgea=radial_profile.radmethod(wvt,vwvt,wcsxlist[fil],show=False)
+                #these are first pass, fit, ston median, and ston average. we want the last one.
+                edges.append(edgea)
+                if np.isnan(edgea):
+                    nedge+=1
+
+                si,va=generatetestdata.ogenerator(len(siglist[fil]),len(siglist[fil][0]),center,popt[0],popt[1],popt[2],Bg,expt,first)
+                if data[fil][0]==0:
+                    wvt=si
+                    vwvt=va
+                else:
+                    binlist=main.mainfunc(si,va,data[fil][0],displayWVT=False,epsilon=-10)
+                    wvt,ston=functions.generate_wvt3(binlist,si,va,np.full(len(binlist),1))
+                    vwvt=functions.generate_wvt(binlist,va)
+                edgex,edge2,edgec,edgea=radial_profile.radmethod(wvt,vwvt,wcsxlist[fil],show=False)
+                #these are first pass, fit, ston median, and ston average. we want the last one.
+                edges2.append(edgea)
+            
+            eem=np.nanmean(edges)
+            if len(edges)>1:
+                ees=np.nanstd(edges)
             else:
-                weighting=True
-            subfolder="target"+str(targlist[m])
-            wvt,vwvt,ston=main.mainfunc(siglist[i],varlist[i],targlist[m],displayWVT=False,epsilon=-10)
-            main.saveiteratedfits(targlist[m],wcsxlist[i],wvt,vwvt,ston,objlist[i],sourcelist[i],subfolder=subfolder,weighting=weighting)
-            superwcsxlist.append(wcsxlist[i])
-            supersiglist.append(wvt)
-            supervarlist.append(vwvt)
-            supersourcelist.append(sourcelist[i]+"/"+subfolder)
-            superobjlist.append(objlist[i])
-    qradial.qradial(superwcsxlist,supersiglist,supervarlist,supersourcelist,superobjlist)
+                ees=0
+
+            eem2=np.nanmean(edges2)
+            if len(edges2)>1:
+                ees2=np.nanstd(edges2)
+            else:
+                ees2=0
+
+            maxlist.append(str(round(eem,3))+"$\pm$"+str(round(ees,3)))
+            simlist.append(str(round(eem2,3))+"$\pm$"+str(round(ees2,3)))
+            numnanedges.append(str(int(nedge))+"/"+str(numtimes))
+            if first<=eem2+ees2 and first<eem-ees and (first-eem2)/ees2 < (first-eem)/ees:
+                conclist.append("likely edge")
+            else:
+                conclist.append("inconclusive")
+    pathfile="/Users/pierre/Downloads/nebularedges.txt"
+    tabulate(pathfile,sourcelist,objlist,firstlist,simlist,numnanedges,maxlist,conclist)
     print("Bye Bye!")

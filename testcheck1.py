@@ -12,22 +12,15 @@ wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
 
 
 
-
-ssum=0
-svar=0
-for y in range(len(signal)):
-    for x in range(len(signal[0])):
-        ssum+=signal[y][x]
-        svar+=var[y][x]
-
-
+ssum=np.sum(signal)
+svar=np.sum(var)
 
 print("objname: "+objname)
 print("sig sum: "+str(ssum))
 print("var sum: "+str(svar))
-print("all ston "+str(ssum/np.sqrt(svar)))
+## print("all ston "+str(ssum/np.sqrt(svar)))
 
-target=[3,5]
+target=[3,5,10]
 
 
 for t in target:
@@ -38,22 +31,30 @@ for t in target:
     stonfits="zston_"+name+"_wit.fits"
     signalname=source+"/target"+str(t)+"/"+sigfits
     with fits.open(signalname) as hdul:
-            signal=np.flipud(hdul[0].data)
-            wcsx=wcs.WCS(hdul[0].header)
+        signal=np.flipud(hdul[0].data)
+        wcsx=wcs.WCS(hdul[0].header)
     signalname=source+"/target"+str(t)+"/"+varfits
     with fits.open(signalname) as hdul:
-            var=np.flipud(hdul[0].data)
-            wcsx=wcs.WCS(hdul[0].header)
+        var=np.flipud(hdul[0].data)
+        wcsx=wcs.WCS(hdul[0].header)
 
-    ssum=0
-    svar=0
+    ssum=np.sum(signal)
+    svar=np.sum(var)
 
-    for y in range(len(signal)):
-        for x in range(len(signal[0])):
-            ssum+=signal[y][x]
-            svar+=var[y][x]
     print("objname: /target"+str(t)+"/"+name)
     print("sig sum: "+str(ssum))
     print("var sum: "+str(svar))
-    print("all ston "+str(ssum/np.sqrt(svar)))
-    
+
+    signalname=source+"/target"+str(t)+"/block_"+sigfits
+    with fits.open(signalname) as hdul:
+        signal=np.flipud(hdul[0].data)
+        wcsx=wcs.WCS(hdul[0].header)
+    signalname=source+"/target"+str(t)+"/block_"+varfits
+    with fits.open(signalname) as hdul:
+        var=np.flipud(hdul[0].data)
+        wcsx=wcs.WCS(hdul[0].header)
+
+    ssum=np.sum(signal)
+    svar=np.sum(var)
+    print("block_sig sum: "+str(ssum))
+    print("block_var sum: "+str(svar))

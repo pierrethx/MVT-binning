@@ -36,7 +36,7 @@ def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
     #blockout(target,wvt,ston)
     return binlist
 
-def saveiteratedfits(target,binlist,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
+def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
     
     header=wcsx.to_header()
     hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
@@ -99,7 +99,7 @@ def maketargetscatter(target,binlist,signal,var):
 def blockout(target,wvt,ston):
     for y in range(len(ston)):
         for x in range(len(ston[y])):
-            if ston[y][x]<=target*0.707:
+            if ston[y][x]<=target*0.5:
                 wvt[y][x]=0
                 #ston[y][x]=0
 
@@ -139,6 +139,7 @@ if __name__ == "__main__":
         weighting=True
     binlist=mainfunc(signal2,var2,target,displayWVT=False,epsilon=-10)
     
+    wvt,ston=functions.generate_wvt4(binlist,signal,var,np.full(len(binlist),1),True)
     wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1),True)
     
     #saveiteratedfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder="target"+str(target))

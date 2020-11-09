@@ -126,7 +126,6 @@ def calculate_signal(binn,sigmap):
     return numerator
 
 def calculate_scales(target,binlist,signal,var):
-    
     geomcentres=[]
     scalelengths=[]
     binlist2=[]
@@ -160,6 +159,7 @@ def calculate_scales(target,binlist,signal,var):
 
     geocarray=np.array(geomcentres)
     scalearray=np.array(scalelengths)
+    
     
     return binlist2,geocarray,scalearray
 
@@ -256,7 +256,37 @@ def generate_wvt3(binlist,signal,var,scalearray,displayWVT=False):
         image=ax.imshow(ston,cmap="cubehelix")
         fig.colorbar(image)
         plt.show()
-    return wvt, ston      
+    return wvt, ston 
+
+def generate_wvt4(binlist,signal,var,scalearray,displayWVT=False):
+    wvt=np.zeros_like(signal)
+    ston=np.zeros_like(signal)
+    for bindex in range(len(binlist)):
+        sig=calculate_signal(binlist[bindex],signal)
+        StoN=calculate_SN(binlist[bindex],signal,var)
+        for point in binlist[bindex]:
+            wvt[point[0]][point[1]]=sig/len(binlist[bindex])
+            ston[point[0]][point[1]]=StoN
+    if displayWVT:
+        fig,ax=plt.subplots()
+        def onclick(event):
+            x1,y1=event.xdata,event.ydata
+            for bint in range(len(binlist)):
+                if (int(y1+.5),int(x1+.5)) in binlist[bint]:
+                    binn=binlist[bint]
+                    
+                    print("other pixels in this bin: ")
+                    for tup in binn:
+                        print("x: "+str(tup[1])+", y:"+str(tup[0]))
+                    print("StoN is for this bin: "+str(ston[binn[0][0]][binn[0][1]]))
+                    print("scale for this bin: "+str(scalearray[bint]))
+                    break
+        cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
+        fig.canvas.mpl_connect('button_press_event',onclick)
+        image=ax.imshow(wvt,cmap="cubehelix")
+        fig.colorbar(image)
+        plt.show()
+    return wvt, ston         
 
 def numdif(x,y):
     diff=[]
@@ -289,11 +319,16 @@ def lerp(x):
         arr.append(x[i])
     return np.array(arr)
 
-def assign(binlist,signal):
+def assign(binlist,target,ston,signal):
     assign=np.zeros_like(signal)
     binlist2=binlist.copy()
     np.random.shuffle(binlist2)
+    g=1
     for i in range(len(binlist2)):
         for k in binlist2[i]:
-            assign[k[0]][k[1]]=i
+            if ston[k[0]][k[1]]<0.5*target:
+                assign[k[0]][k[1]]=0
+            else:
+                assign[k[0]][k[1]]=g
+        g=g+1
     return assign

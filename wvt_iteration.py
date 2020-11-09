@@ -126,7 +126,7 @@ def append_validate(candidate,target,check):
 
 def iteration_func(target,signal,var,geocarray,scalearray,epsilon,weighting=True,displaywvt=False):
     wvt=np.zeros_like(signal)
-    target=5
+    
     start=time.time()
     ## have to manually kill terminal is does not converge
     difference=2*epsilon
@@ -152,16 +152,76 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon,weighting=True
     print("elapsed time "+str(time.time()-start))
     return binlist
 
+def iteration_funcc(target,signal,var,binlist,epsilon,weighting=True,displaywvt=False):
+    wvt=np.zeros_like(signal)
+    
+    start=time.time()
+    ## have to manually kill terminal is does not converge
+    difference=2*epsilon
+
+    repeat=True
+    numit=0
+
+    density=signal**2/var
+
+    while repeat:
+        print("another iteration")
+        wvt2=np.copy(wvt)
+        
+        carray=[]
+        for binnn in binlist:
+            x=0
+            y=0
+            su=0
+            for point in binnn:
+                y+=point[0]*density[point[0]][point[1]]
+                x+=point[1]*density[point[0]][point[1]]
+                su+=density[point[0]][point[1]]
+            carray.append((y/su,x/su))
+        
+        scalearray=[1]*len(binlist)
+        wvt,ston=functions.generate_wvt3(binlist,signal,var,scalearray,displayWVT=displaywvt)
+        difference=np.sqrt(np.sum((wvt-wvt2)**2)/np.sum(var))
+        print("dif",difference)
+
+        if epsilon<0:
+            numit+=1
+            if numit+epsilon>=0:
+                repeat=False
+        else:
+            repeat=difference>epsilon
+
+    print("elapsed time "+str(time.time()-start))
+    return binlist
+
 
 if __name__ == "__main__":
+    '''
     wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
     geocarray=initialize(enternew=True)
     scalearray=np.full(len(geocarray),1)
     target=5
+    '''
+    wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
+    target=400
+    binlist,geocarray,scalearray=bin_accretion.cc_accretion(signal,var,target)
+    density=signal**2/var
+    carray=[]
+    for binnn in binlist:
+        x=0
+        y=0
+        su=0
+        for point in binnn:
+            y+=point[0]*density[point[0]][point[1]]
+            x+=point[1]*density[point[0]][point[1]]
+            su+=density[point[0]][point[1]]
+        carray.append((y/su,x/su))
+    scalearray=[1]*len(binlist)
     epsilon=100
-    binlist=iteration_func(target,signal,var,geocarray,scalearray,epsilon,displaywvt=True)
-    wvt=functions.generate_wvt(binlist,signal,displayWVT=True)
-
+    binlist=iteration_funcc(target,signal,var,binlist,-10,displaywvt=False)
+    wvt,ston=functions.generate_wvt4(binlist,signal,var,[1]*len(binlist),displayWVT=True)
+    wvt,ston=functions.generate_wvt3(binlist,signal,var,[1]*len(binlist),displayWVT=True)
+    """
     fig,ax=plt.subplots()
     image=ax.imshow(wvt,cmap="cubehelix")
     fig.colorbar(image)
@@ -171,3 +231,4 @@ if __name__ == "__main__":
     hdu = fits.PrimaryHDU(wvt,header=header)
     hdul = fits.HDUList([hdu])
     hdul.writeto(sourcedir+"/iterated_wvt2.fits",overwrite=True)
+    """

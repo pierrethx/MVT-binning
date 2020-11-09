@@ -51,8 +51,7 @@ def alignwcs(wcs,angles):
     directions=np.array([np.sin(wangs),np.cos(wangs)]).T
     return directions,tags
 
-def radmethod(signal,var,wcsx,show=False):
-    
+def getcenter(signal):
     center=center_of_mass(signal) #as usual is (y,x)
     scale=0.5*np.sqrt(len(signal)**2+len(signal[0])**2)
     mask=np.copy(signal)
@@ -61,6 +60,11 @@ def radmethod(signal,var,wcsx,show=False):
             if np.sqrt((yy-center[0])**2+(xx-center[1])**2)>scale/3:
                 mask[yy][xx]=0
     center=center_of_mass(mask)
+    return center
+
+def radmethod(signal,var,wcsx,show=False,output=None):
+    
+    center=getcenter(signal)
     numdirections=56
     numsteps=200
     argus=np.linspace(0,2*np.pi,numdirections+1)[:-1]
@@ -73,7 +77,8 @@ def radmethod(signal,var,wcsx,show=False):
     print(len(histvalues[0]))
 
     edgecs=np.full(numdirections,np.nan)
-    print(edgecs)
+
+    
 
     for dire in range(numdirections):
         for st in range(numsteps):
@@ -85,10 +90,13 @@ def radmethod(signal,var,wcsx,show=False):
             else:
                 histvalues[dire][st]=signal[yy][xx]
                 varvalues[dire][st]=np.abs(var[yy][xx])
-            if (histvalues[dire][st]<=0) and np.isnan(edgecs[dire]):
+            if np.isnan(edgecs[dire]) and (not np.isnan(histvalues[dire][st])) and (histvalues[dire][st]<=0):
                 edgecs[dire]=steps[st]
+            
         print(str(dire)+" angle out of "+str(numdirections))
         #np.ma.masked_where(vibearray==0,vibearray)
+
+    print(edgecs)
 
     x=np.ma.masked_where(np.isnan(histvalues[0]),steps)
     y=np.ma.masked_where(np.isnan(histvalues[0]),histvalues[0])
@@ -200,7 +208,14 @@ def radmethod(signal,var,wcsx,show=False):
         if edgey<=0:
             edge=True
             break
-    med=np.nanmedian(edgecs)
+    try:
+        med=np.nanmedian(edgecs)
+    except:
+        med=np.nan
+    try:
+        avl=np.nanmean(edgecs)
+    except:
+        avl=np.nan
     if show:
         if edge:
             ax.plot(0*yedge+edgex,yedge,color="green",linestyle="dashed")
@@ -249,7 +264,7 @@ def radmethod(signal,var,wcsx,show=False):
         else:
             ax.plot([edgex,edgex],[np.nanmin(div1),np.nanmax(div1)],color="red",linestyle="dashed")
             ax.annotate('no edge detected', xy=(edgex, edgey), xytext=(edgex-np.max(xa)*0.02, np.nanmax(averages)*.2),horizontalalignment='right')
-        
+
 
         plt.show()
 
@@ -270,9 +285,9 @@ def radmethod(signal,var,wcsx,show=False):
     if inflection is list:
         inflection=inflection[-1]
     
-    
-    
     beta=0.07/(ya[inflection]/I_0 - 0.6065)
+    if beta<0.168:
+        beta=0.168
     r_c=xa[inflection]*np.sqrt(6*beta)
 
     print(inflection)
@@ -280,15 +295,30 @@ def radmethod(signal,var,wcsx,show=False):
     p_0=[I_0,r_c,beta]
 
     print(p_0)
-    val=np.argmin((xa-med)**2)
     try:
-        popt,pcov=curve_fit(circularb,xa[:val],ya[:val],p0=p_0,sigma=yav[:val],absolute_sigma=True)
-        perr = np.sqrt(np.diag(pcov))
+        if np.isnan(med):
+            raise NameError("")
+        val=np.argmin((xa-med)**2)
     except:
-        popt,pcov=curve_fit(circularb,xa[:val],ya[:val],p0=p_0,sigma=yav[:val],absolute_sigma=True,maxfev=1000)
-        perr = np.sqrt(np.diag(pcov))
+        val=len(xa)
+    if val==0:
+        popt=p_0
+    else:
+        try:
+            print(ya[int(val/10):val])
+            popt,pcov=curve_fit(circularb,xa[int(val/10):val],ya[int(val/10):val],p0=p_0,sigma=yav[int(val/10):val],absolute_sigma=True)
+            perr = np.sqrt(np.diag(pcov))
+        except:
+            popt,pcov=curve_fit(circularb,xa[int(val/10):val],ya[int(val/10):val],p0=p_0,sigma=yav[int(val/10):val],absolute_sigma=True,maxfev=1000)
+            perr = np.sqrt(np.diag(pcov))
 
-    print(popt)
+    try:
+        for p in popt:
+            output.append(p)
+    except:
+        pass
+
+    print(output)
     yp=circularb(xa,popt[0],popt[1],popt[2])
     if show:
         fig,ax = plt.subplots()
@@ -313,11 +343,14 @@ def radmethod(signal,var,wcsx,show=False):
     if show:
         ax.plot([xa[j],xa[j]],[np.nanmin(ya),np.nanmax(ya)],color="green",linestyle="dashed")
         ax.plot([med,med],[np.nanmin(ya),np.nanmax(ya)],color="orange",linestyle="dashed")
-        ax.plot([60,60],[np.nanmin(ya),np.nanmax(ya)],color="black")
         plt.show()
 
-    
-    return edgex,xa[j],med
+    print(avl)
+    #edgex=0 edge from average profile
+    #xa[j]=fit edge from profile
+    #med=median of 0 edges from directions
+    #avl=average of 0 edges from directions
+    return edgex,xa[j],med,avl
 
 if __name__=="__main__":
     try:
@@ -327,8 +360,9 @@ if __name__=="__main__":
         repeat=False
 
     while repeat:
-        
-        edgex,edge2,edgec=radmethod(signal,var,wcsx,show=True)
+        output2=[]
+        edgex,edge2,edgec,edgea=radmethod(signal,var,wcsx,show=True,output=output2)
+        print(output2)
         try:
             wcsx,signal,var,source,objname=bin_accretion.initialize(enternew=True)
             repeat=True
