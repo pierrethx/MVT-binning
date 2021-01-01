@@ -16,7 +16,7 @@ def colorat(directory):
         f.write("alias ds9='/Applications/ds9.darwinsierra.8.1/ds9'")
     except:
         print("exists")
-'''
+
 nebulae=['j0248-0817','j0823+0313','j1044+0353','j1238+1009']
 nebnames=['j0248','j0823','j1044','j1238']
 
@@ -54,19 +54,19 @@ for n in range(len(nebulae)):
             g="../"+nebulae[n]+"/target"+str(targs[t])+"/"+findfilewith("../../Downloads/binned_Sep29/"+nebulae[n]+"/target"+str(targs[t]),"468","block")
             b="../"+nebulae[n]+"/target"+str(targs[t])+"/"+findfilewith("../../Downloads/binned_Sep29/"+nebulae[n]+"/target"+str(targs[t]),"447","block")
             f.write("-rgb -red "+r+" -scale log -scalelimits 0 2 -green "+g+" -scale log -scalelimits 0 2 -blue "+b+" -scale log -scalelimits 0 2 ")
+
+
 '''
-
-
-nebulae=['exp100','exp500','exp1000','exp5000','exp10000']
+nebulae=['exp10000']
 nebnames=nebulae
 
-subfolder="Oct19/beta1.8"
+subfolder="Nov6/beta0.9"
 colorat("../../Downloads/"+subfolder)
 
 targs=[0,3,5,10]
-edges=["edge25","edge50","edge75","edge100"]
+edges=["edge50","edge75","edge100"]
 
-'''
+
 for n in range(len(nebulae)):
     for t in range(len(targs)):
         for e in range(len(edges)):
@@ -80,7 +80,7 @@ for n in range(len(nebulae)):
                 f.write(". prescript.sh\n")
                 r="../"+nebulae[n]+"/target"+str(targs[t])+"/"+findfilewith("../../Downloads/Sep4/128x128_peak30/"+nebulae[n]+"/target"+str(targs[t]),"testdata_",edges[e])
                 f.writelines("ds9 -frame delete -fits "+r+" -scale log -scalelimits 0 2\n")
-'''
+
 for n in range(len(nebulae)):
     for e in range(len(edges)):
         f=open("../../Downloads/"+subfolder+"/colorimages/"+str(nebnames[n])+"_all_"+edges[e]+".sh",'w+')
@@ -112,3 +112,4 @@ for e in range(len(edges)):
             else:
                 f.write("-fits "+r+" -scale log -scalelimits 0 40 ")
         f.write("-single")
+'''

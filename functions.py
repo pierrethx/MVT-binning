@@ -102,13 +102,19 @@ def checktoadd(point,binn,weightmap,target,binmass):
     return True
 
 def redistribute(binlist,rebinlist,binfo,weightmap):
-    for bindex in range(len(rebinlist)):
-        for poindex in range(len(rebinlist[bindex])):
-            ## Finding the index of the bin with the closest center
-            centroind=closest_index(rebinlist[bindex][poindex],binfo,weightmap)
-            ## We add the point to that bin
-            ## Don't bother with binfo/binm, last used here:
-            binlist[centroind].append(rebinlist[bindex][poindex])
+    if len(binlist)>0:
+        for bindex in range(len(rebinlist)):
+            for poindex in range(len(rebinlist[bindex])):
+                ## Finding the index of the bin with the closest center
+                centroind=closest_index(rebinlist[bindex][poindex],binfo,weightmap)
+                ## We add the point to that bin
+                ## Don't bother with binfo/binm, last used here:
+                binlist[centroind].append(rebinlist[bindex][poindex])
+    else:
+        binlist.append([])
+        for bindex in range(len(rebinlist)):
+            for poindex in range(len(rebinlist[bindex])):
+                binlist[0].append(rebinlist[bindex][poindex])
 
 def calculate_SN(binn,sigmap,varmap):
     numerator=0
@@ -178,7 +184,7 @@ def calculate_cvt(target,binlist,signal,var):
     return geocarray
 
 def generate_wvt(binlist,signal,displayWVT=False):
-    wvt=np.zeros_like(signal)
+    wvt=np.zeros_like(signal,dtype=float)
     for bindex in range(len(binlist)):
         sig=calculate_signal(binlist[bindex],signal)
         for point in binlist[bindex]:
@@ -201,14 +207,17 @@ def generate_wvt(binlist,signal,displayWVT=False):
     return wvt
 
 def generate_wvt2(binlist,signal,var,displayWVT=False):
-    wvt=np.zeros_like(signal)
-    ston=np.zeros_like(signal)
+    wvt=np.zeros_like(signal,dtype=float)
+    ston=np.zeros_like(signal,dtype=float)
     for bindex in range(len(binlist)):
         sig=calculate_signal(binlist[bindex],signal)
         StoN=calculate_SN(binlist[bindex],signal,var)
         for point in binlist[bindex]:
             wvt[point[0]][point[1]]=sig/len(binlist[bindex])
-            ston[point[0]][point[1]]=StoN
+            if sig==0:
+                ston[point[0]][point[1]]=0
+            else:
+                ston[point[0]][point[1]]=StoN
     if displayWVT:
         fig,ax=plt.subplots()
         def onclick(event):
@@ -229,14 +238,17 @@ def generate_wvt2(binlist,signal,var,displayWVT=False):
     return wvt, ston
 
 def generate_wvt3(binlist,signal,var,scalearray,displayWVT=False):
-    wvt=np.zeros_like(signal)
-    ston=np.zeros_like(signal)
+    wvt=np.zeros_like(signal,dtype=float)
+    ston=np.zeros_like(signal,dtype=float)
     for bindex in range(len(binlist)):
         sig=calculate_signal(binlist[bindex],signal)
         StoN=calculate_SN(binlist[bindex],signal,var)
         for point in binlist[bindex]:
             wvt[point[0]][point[1]]=sig/len(binlist[bindex])
-            ston[point[0]][point[1]]=StoN
+            if sig==0:
+                ston[point[0]][point[1]]=0
+            else:
+                ston[point[0]][point[1]]=StoN
     if displayWVT:
         fig,ax=plt.subplots()
         def onclick(event):
@@ -250,6 +262,7 @@ def generate_wvt3(binlist,signal,var,scalearray,displayWVT=False):
                         print("x: "+str(tup[1])+", y:"+str(tup[0]))
                     print("StoN is for this bin: "+str(ston[binn[0][0]][binn[0][1]]))
                     print("scale for this bin: "+str(scalearray[bint]))
+                    print("index for this: "+str(bint))
                     break
         cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
         fig.canvas.mpl_connect('button_press_event',onclick)
@@ -259,14 +272,17 @@ def generate_wvt3(binlist,signal,var,scalearray,displayWVT=False):
     return wvt, ston 
 
 def generate_wvt4(binlist,signal,var,scalearray,displayWVT=False):
-    wvt=np.zeros_like(signal)
-    ston=np.zeros_like(signal)
+    wvt=np.zeros_like(signal,dtype=float)
+    ston=np.zeros_like(signal,dtype=float)
     for bindex in range(len(binlist)):
         sig=calculate_signal(binlist[bindex],signal)
         StoN=calculate_SN(binlist[bindex],signal,var)
         for point in binlist[bindex]:
             wvt[point[0]][point[1]]=sig/len(binlist[bindex])
-            ston[point[0]][point[1]]=StoN
+            if sig==0:
+                ston[point[0]][point[1]]=0
+            else:
+                ston[point[0]][point[1]]=StoN
     if displayWVT:
         fig,ax=plt.subplots()
         def onclick(event):
@@ -323,12 +339,32 @@ def assign(binlist,target,ston,signal):
     assign=np.zeros_like(signal)
     binlist2=binlist.copy()
     np.random.shuffle(binlist2)
-    g=1
+    g=0
+    h=0
     for i in range(len(binlist2)):
-        for k in binlist2[i]:
-            if ston[k[0]][k[1]]<0.5*target:
-                assign[k[0]][k[1]]=0
-            else:
-                assign[k[0]][k[1]]=g
-        g=g+1
+        k0=binlist2[i][0]
+        if ston[k0[0]][k0[1]]<0.5*target:
+            h=h-1
+            for k in binlist2[i]:
+                assign[k[0]][k[1]]=h
+        else:
+            g=g+1
+            for k in binlist2[i]:
+                assign[k[0]][k[1]]=g      
     return assign
+
+
+def convergence(contarg,diflist,sourcedir,objname,subfolder="unbinned"):
+    fpath=sourcedir+"/"+subfolder+"/y_"+objname+"_convergence.png"
+
+    n=len(diflist)
+    diflist=np.where(np.isnan(diflist),np.zeros_like(diflist),diflist)
+    fig,ax=plt.subplots()
+    ax.set_xlabel("# of iterations")
+    ax.set_ylabel("norm difference")
+    xes=range(1,len(diflist)+1)
+    ax.plot([1,xes[-1]],[contarg,contarg],linestyle="dashed")
+    ax.plot(xes,diflist,marker="o")
+    
+    plt.savefig(fpath)
+    plt.close()

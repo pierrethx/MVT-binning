@@ -28,13 +28,13 @@ def gettarget(initial=0):
 
 def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
     binlist,init_generators,init_scalelengths=bin_accretion.cc_accretion(signal,var,target)
-    binlist=wvt_iteration.iteration_func(target,signal,var,init_generators,init_scalelengths,epsilon,displaywvt=displayWVT)
+    binlist,diflist=wvt_iteration.iteration_func(target,signal,var,init_generators,init_scalelengths,epsilon,displaywvt=displayWVT)
     wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT)
     vwvt=functions.generate_wvt(binlist,var)
     if displayWVT:
         maketargetscatter(target,binlist,signal,var)
     #blockout(target,wvt,ston)
-    return binlist
+    return binlist,diflist
 
 def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
     
@@ -113,7 +113,7 @@ def saveassign(wcsx,assign,sourcedir,objname,subfolder="unbinned"):
     header=wcsx.to_header()
     hdu3 = fits.PrimaryHDU(np.flipud(assign),header=header)
     hdul3 = fits.HDUList([hdu3])
-    hdul3.writeto(sourcedir+"/"+subfolder+"/"+objname+"_assigned.fits",overwrite=True)
+    hdul3.writeto(sourcedir+"/"+subfolder+"/z_"+objname+"_assigned.fits",overwrite=True)
 
 if __name__ == "__main__":
     wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         target=-target
     else:
         weighting=True
-    binlist=mainfunc(signal2,var2,target,displayWVT=False,epsilon=-10)
+    binlist,diflist=mainfunc(signal2,var2,target,displayWVT=False,epsilon=-10)
     
     wvt,ston=functions.generate_wvt4(binlist,signal,var,np.full(len(binlist),1),True)
     wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1),True)

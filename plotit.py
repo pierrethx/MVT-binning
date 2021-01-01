@@ -22,13 +22,32 @@ f,a=plt.subplots()
 a.imshow(np.ma.masked_where(np.isnan(signal[0]/np.sqrt(var[0])),signal[0]/np.sqrt(var[0])),cmap='cubehelix')
 plt.show()
 '''
-print(signal)
 
-f,a=plt.subplots()
-a.imshow(signal[0]/np.sqrt(var[0]),cmap='cubehelix')
-plt.show()
+for n in range(len(signal)):
+    wvt=signal[n]/np.sqrt(var[n])
+    header=wcsx[n].to_header()
+    hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
+    hdul = fits.HDUList([hdu])
+    hdul.writeto(sourcedir[n]+"/zston_"+objname[n]+".fits",overwrite=True)
 
-
+'''
+for n in range(len(signal)):
+    
+    name="_".join(objname[n].split("_")[1:-2])
+    stonfits="zston_"+name+".fits"
+    with fits.open(sourcedir[n]+"/"+stonfits) as hdul:
+        ston=np.flipud(hdul[0].data)
+        wcsx=wcs.WCS(hdul[0].header)
+        (ston/snon)**2
+    
+    fig,ax=plt.subplots(1,1)
+    ax.set_title("Sig/var")
+    snon=signal[n]/np.sqrt(var[n])
+    ax.imshow(snon,cmap="cubehelix")
+    #ax[1].set_title("Ston")
+    #ax[1].imshow(ston,cmap="cubehelix")
+    plt.show()
+'''
 
 '''
 source="/".join(sourcedir.split("/")[:-2])

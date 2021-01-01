@@ -52,9 +52,10 @@ def alignwcs(wcs,angles):
     return directions,tags
 
 def getcenter(signal):
-    center=center_of_mass(signal) #as usual is (y,x)
+    siggy=np.ma.masked_where(signal<0,signal)
+    center=center_of_mass(siggy) #as usual is (y,x)
     scale=0.5*np.sqrt(len(signal)**2+len(signal[0])**2)
-    mask=np.copy(signal)
+    mask=np.copy(siggy)
     for yy in range(len(mask)):
         for xx in range(len(mask[yy])):
             if np.sqrt((yy-center[0])**2+(xx-center[1])**2)>scale/3:
@@ -74,7 +75,6 @@ def radmethod(signal,var,wcsx,show=False,output=None):
 
     histvalues=np.full((numdirections,numsteps),np.nan)
     varvalues=np.full((numdirections,numsteps),np.nan)
-    print(len(histvalues[0]))
 
     edgecs=np.full(numdirections,np.nan)
 
@@ -83,6 +83,9 @@ def radmethod(signal,var,wcsx,show=False,output=None):
     for dire in range(numdirections):
         for st in range(numsteps):
             rawpoint=directions[dire]*steps[st]
+
+            print(str(rawpoint)+" "+str(center))
+
             yy=int(rawpoint[0]+0.5+center[0])
             xx=int(rawpoint[1]+0.5+center[1])
             if yy>=len(signal) or yy<0 or xx>=len(signal[0]) or xx<0:
@@ -268,7 +271,7 @@ def radmethod(signal,var,wcsx,show=False,output=None):
 
         plt.show()
 
-    I_0=(ya[0]+np.nanmax(ya))/2
+    I_0=np.nanmax(ya)
     smallest=1
     for l in range(len(ya)):
         if ya[l]>0.6065*I_0:
@@ -309,7 +312,7 @@ def radmethod(signal,var,wcsx,show=False,output=None):
             popt,pcov=curve_fit(circularb,xa[int(val/10):val],ya[int(val/10):val],p0=p_0,sigma=yav[int(val/10):val],absolute_sigma=True)
             perr = np.sqrt(np.diag(pcov))
         except:
-            popt,pcov=curve_fit(circularb,xa[int(val/10):val],ya[int(val/10):val],p0=p_0,sigma=yav[int(val/10):val],absolute_sigma=True,maxfev=1000)
+            popt,pcov=p_0,np.sqrt(p_0)
             perr = np.sqrt(np.diag(pcov))
 
     try:

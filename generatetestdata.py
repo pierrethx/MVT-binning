@@ -72,6 +72,11 @@ def ogenerator(widpix,heipix,center,A,r,b,I_b,expt,edge):
                     model[j][i]=0
     model+=I_b
     model*=expt
+    print("A: "+str(A))
+    print("r c: "+str(r))
+    print("b: "+str(b))
+    print("bg: "+str(I_b))
+    print("min: "+str(np.min(model)))
     model_w_noise=(np.random.poisson(lam=model)+0.01*np.random.rand(len(model),len(model[0])))
     #+noise2*np.random.rand(len(xx),len(xx[0]))
     noise=model-model_w_noise
@@ -127,7 +132,7 @@ def genmoredata(num,widpix,heipix,A,r,b,I_b,expt,edge,subfolder):
 if __name__ == "__main__":
     A=10.75
     r=20
-    b=1.8
+    b=0.9
     I_b=[10] #background signal
     #edge=[25,50,75,100]
     edge=[50,75,100]
@@ -137,7 +142,7 @@ if __name__ == "__main__":
     widpix=128
     heipix=128
 
-    subfolder="Nov6/expansion"
+    subfolder="Nov6/expansion0.9"
 
     makeitfolder(subfolder,expt)
     num=1

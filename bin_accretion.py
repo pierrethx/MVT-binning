@@ -212,6 +212,8 @@ def cc_accretion(signal,var,target):
 
     ## this is the signal-to-noise for each pixel
     ston=signal/np.sqrt(np.abs(var))
+    ## to prevent situations where 0/0=nan by making any place where sig=0, ston=0.
+    ston=np.where(np.equal(signal,np.zeros_like(signal)),signal,ston)
     var[signal<=0]=0
     
     assign=np.full_like(ston,-1)
@@ -281,7 +283,10 @@ def cc_accretion(signal,var,target):
             binlist.append(current)
             bcentroids.append(centroid)
             
-        supercentroid=((supercentroid[0]*supermass+centroid[0]*binmass)/(supermass+binmass),(supercentroid[1]*supermass+centroid[1]*binmass)/(supermass+binmass))
+        if (supermass+binmass==0):
+            pass
+        else:
+            supercentroid=((supercentroid[0]*supermass+centroid[0]*binmass)/(supermass+binmass),(supercentroid[1]*supermass+centroid[1]*binmass)/(supermass+binmass))
         supermass=supermass+binmass
         viable.extend([v for v in viablecell if not v in viable])
         print(np.count_nonzero(assign == -1))

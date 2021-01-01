@@ -130,7 +130,7 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon,weighting=True
     start=time.time()
     ## have to manually kill terminal is does not converge
     difference=2*epsilon
-
+    diflist=[]
     repeat=True
     numit=0
 
@@ -147,10 +147,11 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon,weighting=True
             if numit+epsilon>=0:
                 repeat=False
         else:
+            diflist.append(difference)
             repeat=difference>epsilon
 
     print("elapsed time "+str(time.time()-start))
-    return binlist
+    return binlist,diflist
 
 def iteration_funcc(target,signal,var,binlist,epsilon,weighting=True,displaywvt=False):
     wvt=np.zeros_like(signal)

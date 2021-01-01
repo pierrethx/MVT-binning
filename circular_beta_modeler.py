@@ -32,13 +32,13 @@ fig = plt.figure()
 ax = plt.axes([0.1, 0.3, .8,.6])
 ax.set_ylim(0,I_0*1.05)
 ax.set_xlim(-I_0,I_0)
-line0, = ax.plot(r, 0*r+fix, 'r',linestyle="dashed",alpha=0.5)
+#line0, = ax.plot(r, 0*r+fix, 'r',linestyle="dashed",alpha=0.5)
 linev1, = ax.plot(v*0+fix2, v, 'r',linestyle="dotted",alpha=0.5)
 linev2, = ax.plot(v*0-fix2, v, 'r',linestyle="dotted",alpha=0.5)
 line1, = ax.plot(r, I, 'b-')
 #linea1, = ax.plot(r, aI, 'k-')
-linee1, = ax.plot(r, eI, 'c-')
-linef, = ax.plot(r, 0*r+fI, 'k',linestyle="dashed")
+#linee1, = ax.plot(r, eI, 'c-')
+#linef, = ax.plot(r, 0*r+fI, 'k',linestyle="dashed")
 print("oop1")
 
 def update(val):
@@ -57,11 +57,11 @@ def update(val):
 
     line1.set_ydata(I)
     #linea1.set_ydata(I_0*(1+(0.5-3*b)*(r/r_c)**2))
-    linee1.set_ydata(eI)
+    #linee1.set_ydata(eI)
 
     #line0.set_xdata(r)
-    line0.set_ydata(0*r+fix)
-    linef.set_ydata(0*r+fI)
+    #line0.set_ydata(0*r+fix)
+    #linef.set_ydata(0*r+fI)
     linev1.set_xdata(v*0+fix2)
     linev2.set_xdata(v*0-fix2)
     #plt.pause(0.1)
@@ -81,10 +81,10 @@ def storit(val):
     eI=I_0*(np.exp((0.5-3*b)*(r/r_c)**2))
     fI=(1+1/(6*b))**(0.5-3*b)
 
-    ax.plot(r,I,color="cyan",alpha=0.5)
+    ax.plot(r,I,color="green",alpha=0.5)
     #ax.plot(r,I_0*(1+(0.5-3*b)*(r/r_c)**2),color="black",alpha=0.5)
-    ax.plot(r,eI,color="green",alpha=0.5)
-    ax.plot(r,0*r+fI,color="black",alpha=0.5)
+    #ax.plot(r,eI,color="cyan",alpha=0.5)
+    #ax.plot(r,0*r+fI,color="black",alpha=0.5)
     
 """
 ampax = plt.axes([0.2, 0.16, 0.6, 0.03], facecolor="beige")
@@ -96,10 +96,10 @@ srad = Slider(radax, 'Core Rad', 0.05, 1, valinit=1, valstep=0.01,orientation="h
 srad.on_changed(update)
 
 betax = plt.axes([0.2, 0.04, 0.6, 0.03], facecolor="beige")
-sbet= Slider(betax, 'Beta', .34, 2, valinit=.34, valstep=0.01,orientation="horizontal")
+sbet= Slider(betax, 'Beta', .34, 2.5, valinit=.34, valstep=0.01,orientation="horizontal")
 sbet.on_changed(update)
 
-buttax=plt.axes([0.4,0.2,.2,.05],facecolor="beige")
+buttax=plt.axes([0.4,0.15,.2,.05],facecolor="beige")
 sbutt=Button(buttax,"Store")
 sbutt.on_clicked(storit)
 

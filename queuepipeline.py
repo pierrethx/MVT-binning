@@ -7,12 +7,15 @@ def tabulate(pathfile,slist,obj,first,sim,maxi,nedges,conc):
     f.write("\\begin{tab"+"ular}{|c||c|c|c|}\n \\hline\n")
     f.write("file & recovered edge & simulated edge & sim maximum edge & num nan edges& conclusion\\\\ \n \\hline \n")
     
-    for i in range(len(obj)):
+    for i in range(len(nedges)):
         f.write(slist[i].split("/")[-1]+"/"+obj[i]+" & "+first[i]+" & "+sim[i]+" & "+maxi[i]+" & "+nedges[i]+" & "+conc[i]+" \\\\ \n")
     f.write("\\hline\n\\end{tab"+"ular}")
 
 if __name__ == "__main__":
+
+    name=main.getname("_.txt")
     
+    pathfile="/Users/pierre/Downloads/"+name
 
     wcsxlist,siglist,varlist,sourcelist,objlist=bin_accretion.minitialize()
     outputlist=[]
@@ -35,8 +38,9 @@ if __name__ == "__main__":
         first=data[fil][6]
         firstlist.append(str(round(first,3)))
         if np.isnan(first) or first<1:
-            maxlist.append(np.nan)
-            simlist.append(np.nan)
+            maxlist.append("nan")
+            simlist.append("nan")
+            numnanedges.append("nan")
             conclist.append("no edge")
         else:
             edges=[]
@@ -44,12 +48,13 @@ if __name__ == "__main__":
             nedge=0
             for too in range(numtimes):
                 expt=np.nanmax(siglist[fil]/varlist[fil])
-                Bg=np.average(expt*varlist[fil]-siglist[fil],weights=np.ma.masked_where(np.isnan(siglist[fil]/np.sqrt(varlist[fil])),siglist[fil]/np.sqrt(varlist[fil])))
+                Bg=np.abs(np.average(expt*varlist[fil]-siglist[fil],weights=np.ma.masked_where(np.isnan(siglist[fil]/np.sqrt(varlist[fil])),siglist[fil]/np.sqrt(varlist[fil]))))
 
                 popt=outputlist[fil]
                 print(first)
                 center=radial_profile.getcenter(siglist[fil])
-                si,va=generatetestdata.ogenerator(len(siglist[fil]),len(siglist[fil][0]),center,popt[0],popt[1],popt[2],Bg,expt,np.nan)
+                factor=1.4
+                si,va=generatetestdata.ogenerator(int(factor*len(siglist[fil])),int(factor*len(siglist[fil][0])),(factor*center[0],factor*center[1]),np.abs(popt[0]),popt[1],popt[2],Bg,expt,np.nan)
 
                 if data[fil][0]==0:
                     wvt=si
@@ -91,10 +96,10 @@ if __name__ == "__main__":
             maxlist.append(str(round(eem,3))+"$\pm$"+str(round(ees,3)))
             simlist.append(str(round(eem2,3))+"$\pm$"+str(round(ees2,3)))
             numnanedges.append(str(int(nedge))+"/"+str(numtimes))
-            if first<=eem2+ees2 and first<eem-ees and (first-eem2)/ees2 < (first-eem)/ees:
+            if first<=eem2+ees2 and first<eem-ees and ((first-eem2)/ees2 < (first-eem)/ees or (nedge>3)):
                 conclist.append("likely edge")
             else:
                 conclist.append("inconclusive")
-    pathfile="/Users/pierre/Downloads/nebularedges.txt"
-    tabulate(pathfile,sourcelist,objlist,firstlist,simlist,numnanedges,maxlist,conclist)
+        tabulate(pathfile,sourcelist,objlist,firstlist,simlist,maxlist,numnanedges,conclist)
+    
     print("Bye Bye!")
