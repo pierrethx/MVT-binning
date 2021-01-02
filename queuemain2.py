@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import time,os
 import scipy.spatial as sp
 
+##this is very similar to queuemain.py though we have to include a bunch of modified function
+## to support expansion method. but like mainfunc looks the same, but we have to include it because we needed to change bin accretion because we needed to change calculate_scales
+
 SMALL_SIZE=14
 MEDIUM_SIZE=16
 BIGGER_SIZE=20
@@ -38,7 +41,8 @@ def calculate_scales(target,binlist,signal,var,scalarray,edgelist):
             delta=np.sqrt(len(binlist[bindex])*target/(q*StoN))
             if np.isinf(delta):
                 delta=np.nan
-            
+
+            ## this is to check to see if we should crush individual pixels that sit entirely within other bins. BAD! We hate that
             if len(binlist[bindex])==1:
                 ## check if swallowed pixel
                 swallowed=False
@@ -64,6 +68,7 @@ def calculate_scales(target,binlist,signal,var,scalarray,edgelist):
                     if edgelist[bindex]:
                             scalelengths.append(scalarray[bindex])
                     else:
+                        ## if a bin cannot meet minimum StoN and is in the middle of the image, we want to grow it
                         scalelengths.append(1.1*scalarray[bindex])
                 else:
                     scalelengths.append(delta)
@@ -340,6 +345,7 @@ def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
     return binlist,diflist
 
 if __name__ == "__main__":
+    ## this is just a very straightforward we set up all the files and pass them through the algorithm and save it
     targhold=0
     targlist=[]
     wcsxlist,siglist,varlist,sourcelist,objlist=bin_accretion.minitialize()

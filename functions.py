@@ -117,6 +117,7 @@ def redistribute(binlist,rebinlist,binfo,weightmap):
                 binlist[0].append(rebinlist[bindex][poindex])
 
 def calculate_SN(binn,sigmap,varmap):
+    ## as defined in CC03 and DS06
     numerator=0
     denominator=0
     for tupple in binn:
@@ -126,12 +127,14 @@ def calculate_SN(binn,sigmap,varmap):
     return SN
 
 def calculate_signal(binn,sigmap):
+    ## sums the signal in a bin from a list of the tuples and the signalmap
     numerator=0
     for tupple in binn:
         numerator=numerator+sigmap[tupple[0]][tupple[1]]
     return numerator
 
 def calculate_scales(target,binlist,signal,var):
+    ## calculates the scales as formulated in DS06.
     geomcentres=[]
     scalelengths=[]
     binlist2=[]
@@ -170,6 +173,7 @@ def calculate_scales(target,binlist,signal,var):
     return binlist2,geocarray,scalearray
 
 def calculate_cvt(target,binlist,signal,var):
+    ## like calculate scales, but if we were constructing a CVT, scales all=1 so we just need the geometric centers
 
     geomcentres=[]
     for bindex in range(len(binlist)):
@@ -184,6 +188,7 @@ def calculate_cvt(target,binlist,signal,var):
     return geocarray
 
 def generate_wvt(binlist,signal,displayWVT=False):
+    ## generates a WVT from a datamap and displays it
     wvt=np.zeros_like(signal,dtype=float)
     for bindex in range(len(binlist)):
         sig=calculate_signal(binlist[bindex],signal)
@@ -207,6 +212,7 @@ def generate_wvt(binlist,signal,displayWVT=False):
     return wvt
 
 def generate_wvt2(binlist,signal,var,displayWVT=False):
+    ## generates a WVT and StoN map from signal and var maps and displays the WVT
     wvt=np.zeros_like(signal,dtype=float)
     ston=np.zeros_like(signal,dtype=float)
     for bindex in range(len(binlist)):
@@ -238,6 +244,8 @@ def generate_wvt2(binlist,signal,var,displayWVT=False):
     return wvt, ston
 
 def generate_wvt3(binlist,signal,var,scalearray,displayWVT=False):
+    ## generates a WVT and StoN map from signal and var maps and displays the StoN
+    ## and allows you to interact with graph and see the scalelengths
     wvt=np.zeros_like(signal,dtype=float)
     ston=np.zeros_like(signal,dtype=float)
     for bindex in range(len(binlist)):
@@ -272,6 +280,8 @@ def generate_wvt3(binlist,signal,var,scalearray,displayWVT=False):
     return wvt, ston 
 
 def generate_wvt4(binlist,signal,var,scalearray,displayWVT=False):
+    ## generates a WVT and StoN map from signal and var maps and displays the WVT
+    ## and allows you to interact with graph and see the scalelengths
     wvt=np.zeros_like(signal,dtype=float)
     ston=np.zeros_like(signal,dtype=float)
     for bindex in range(len(binlist)):
@@ -305,6 +315,7 @@ def generate_wvt4(binlist,signal,var,scalearray,displayWVT=False):
     return wvt, ston         
 
 def numdif(x,y):
+    ## numerically differentiates a list using symmetric difference quotient.
     diff=[]
     for i in range(len(y)):
         if i==0 or i==len(y)-1:
@@ -314,6 +325,7 @@ def numdif(x,y):
     return np.array(diff)
 
 def smoother(x,n):
+    ## apply boxcar averaging to a list of values 
     ## no smoothing is n=0
     y=[]
     for j in range(len(x)):
@@ -328,6 +340,8 @@ def smoother(x,n):
                 
 
 def lerp(x):
+    ## linearly interpolates intermediate points between a list of values, here just puts a point halfway between each given value
+    ## would use this in tandem with smoother and numdiff to give good smoothish derivatives
     arr=[]
     arr.append(x[0])
     for i in range(1,len(x)):
@@ -336,6 +350,11 @@ def lerp(x):
     return np.array(arr)
 
 def assign(binlist,target,ston,signal):
+    ## generates an assignment file from a binlist. This makes it easier to reconstruct a binning
+    ## without saving the binlist as a separate file or anything.
+    ## every bin gets a unique integer value
+    ## here we have inadequate bins with negative integer value, and nothing as 0. this makes it easier to visualize how the 
+    # binning went when we have large amounts of invalid bins that we want to look closer at
     assign=np.zeros_like(signal)
     binlist2=binlist.copy()
     np.random.shuffle(binlist2)
@@ -355,6 +374,8 @@ def assign(binlist,target,ston,signal):
 
 
 def convergence(contarg,diflist,sourcedir,objname,subfolder="unbinned"):
+    ## generates a chart to see how a function converges over many iterations. 
+    # This is to check condition 4 of the function converging over time.
     fpath=sourcedir+"/"+subfolder+"/y_"+objname+"_convergence.png"
 
     n=len(diflist)

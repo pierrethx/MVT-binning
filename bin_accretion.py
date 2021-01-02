@@ -82,6 +82,7 @@ def initialize(enternew=True):
     
     return wcsx,signal,var,sourcedir,objname
 
+## this function allows one to select multiple sets of files at once. it is better
 def minitialize():
     wcsxlist=[]
     signallist=[]
@@ -89,7 +90,6 @@ def minitialize():
     sourcedirlist=[]
     objnamelist=[]
     
-
     validatesignal=True
     while validatesignal:
         root=tkinter.Tk()
@@ -194,7 +194,8 @@ def minitialize():
 
     return wcsxlist,signallist,varlist,sourcedirlist,objnamelist
 
-
+## this is used in bin accretion and wvt construction, to check to see that tuples are actually
+## members of the image (Since they both construct bins using a wavefront approach, edges need to be checked)
 def validateappend(target,candidate,check):
     ## candidate is as (y,x)
     try:
@@ -208,6 +209,7 @@ def validateappend(target,candidate,check):
     except:
         pass
 
+## this is the primary bin accretion function
 def cc_accretion(signal,var,target):
 
     ## this is the signal-to-noise for each pixel
@@ -216,13 +218,18 @@ def cc_accretion(signal,var,target):
     ston=np.where(np.equal(signal,np.zeros_like(signal)),signal,ston)
     var[signal<=0]=0
     
+    ## we set up an assignment array to easier check bin loyalties for pixels
     assign=np.full_like(ston,-1)
             
     #density=ston*np.abs(ston)
+    ## density is defined in CC03 as SN squared, sign unimportant since CC03 uses pos data,
+    ##  above def would preserve sign, but it doesnt seem like this makes binnings better
     density=ston*ston
     cellsleft=np.count_nonzero(assign == -1)
     print(cellsleft)
 
+    ## we start from pixel with highest signal to noise, assumed to be center of nebula
+    ## we also need to keep track of the center of ALL binned pixels. at step 1 this is the only binned pix
     supercentroid=np.unravel_index(ston.argmax(),ston.shape)
     supermass=density[supercentroid[0]][supercentroid[1]]
     
@@ -234,22 +241,31 @@ def cc_accretion(signal,var,target):
     rebinlist=[]
     
     ## in case this borks np.count_nonzero(array == value) to return -1 in assign
+    ## the process is as follows. we have a list of binned pixels, and a list of adjacent, "viable" pixels
+    ## we choose whichever viable pixel is closest to the supercentroid to start the next bin
+    ## as we add pixels to new bin, we check to see if accretion continues, then add adj pixels to viablecell
+    ## we choose new pixels to add to the bin from viablecell
+    ## once bin accretion stops (violates conditions), viablecell is merged into viable and a new pixel is selected to start next bin
     while len(viable)>0:
+        ## picking new point to start next bin
         centroid=functions.closest_point(supercentroid,viable,density)
+        ## begin with empty cell. Add pixel to new cell and remove from viable
         current=[]
         current.append(centroid)
         viable.remove(centroid)
         assign[centroid[0]][centroid[1]]=0
+        ## introduce list of candidates for bin and populate with adjacent cell, checking to see if it is already assigned
         viablecell=[]
         validateappend(viablecell,(centroid[0]+1,centroid[1]),assign)
         validateappend(viablecell,(centroid[0]-1,centroid[1]),assign)
         validateappend(viablecell,(centroid[0],centroid[1]+1),assign)
         validateappend(viablecell,(centroid[0],centroid[1]-1),assign)
         binmass=density[centroid[0]][centroid[1]]
+        ## do we continue to accrete? Have we reached minimum StoN?
         accrete=binmass<target**2 and len(viablecell)>0
         while accrete:
             nextpoint=functions.closest_point(centroid,viablecell,density)
-
+            ## Rmax is maxumum roundness. Defined in CC03
             Rmax=0.3
             newbin=current+[nextpoint]
             nmass=binmass+density[nextpoint[0]][nextpoint[1]]
@@ -260,21 +276,26 @@ def cc_accretion(signal,var,target):
             R=rmax*np.sqrt(np.pi/len(newbin))-1
             #if R<=Rmax and np.abs(binmass-target**2)>np.abs(nmass-target**2): here we are saying that the new mass brings the bin closer to the target
             if R<=Rmax and not np.isnan(nmass) and np.abs(binmass-target**2)>=np.abs(nmass-target**2):
+                ## pixel has been chosen to be accreted. we remove from viablecell (and viable) and add to bin
                 current.append(nextpoint)
                 viablecell.remove(nextpoint)
                 if viable.count(nextpoint)>0:
                     viable.remove(nextpoint)
                 assign[nextpoint[0]][nextpoint[1]]=0
+                ## we update the binmasses, which will be used to calculate the scales and stuff
                 binmass=nmass
                 centroid=ncentroid
+                ## then add new pixels to viablecell for continued accretion
                 validateappend(viablecell,(nextpoint[0]+1,nextpoint[1]),assign)
                 validateappend(viablecell,(nextpoint[0]-1,nextpoint[1]),assign)
                 validateappend(viablecell,(nextpoint[0],nextpoint[1]+1),assign)
                 validateappend(viablecell,(nextpoint[0],nextpoint[1]-1),assign)
                 accrete= len(viablecell)>0
             else: 
+                ## or, we have chosen to end accretion and exit the loop for this bin
                 accrete=False
                 
+        ## if bin reaches minimum SN of 0.8target, we accept, otherwise it will be redispersed.
         success=0.8
         if binmass/(target**2)<success or np.isnan(binmass):
             rebinlist.append(current)
@@ -283,6 +304,7 @@ def cc_accretion(signal,var,target):
             binlist.append(current)
             bcentroids.append(centroid)
             
+        ## construct centroid of all binned pixels to find start of next bin. and combine viablecell with viable
         if (supermass+binmass==0):
             pass
         else:

@@ -11,6 +11,7 @@ import tkinter as tk
 from tkinter import simpledialog
 
 def getname(initial=""):
+    ## for getting the user to name an object
     application_window = tk.Tk()
     application_window.withdraw()
     target = simpledialog.askstring("Input", "What is the objectname?",parent=application_window,initialvalue=initial)
@@ -19,6 +20,7 @@ def getname(initial=""):
     return target
 
 def gettarget(initial=0):
+    ## for getting the target StoN from user
     application_window = tk.Tk()
     application_window.withdraw()
     target = simpledialog.askinteger("Input", "What is the target Signal-to-Noise? \n For cvt instead of wvt make this number negative :]",parent=application_window,initialvalue=initial)
@@ -27,11 +29,14 @@ def gettarget(initial=0):
     return target
 
 def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
+    ## this is the most important function
+    ## first we do bin accretion. then iteration. the wvt and vwvt is not necessary here but im scared to remove it
     binlist,init_generators,init_scalelengths=bin_accretion.cc_accretion(signal,var,target)
     binlist,diflist=wvt_iteration.iteration_func(target,signal,var,init_generators,init_scalelengths,epsilon,displaywvt=displayWVT)
-    wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT)
-    vwvt=functions.generate_wvt(binlist,var)
+    
     if displayWVT:
+        wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT)
+        vwvt=functions.generate_wvt(binlist,var)
         maketargetscatter(target,binlist,signal,var)
     #blockout(target,wvt,ston)
     return binlist,diflist
