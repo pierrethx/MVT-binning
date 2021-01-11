@@ -22,7 +22,7 @@ while (bloop):
         root.destroy()
         with fits.open(placeholder) as hdul:
             assign=np.flipud(hdul[0].data).astype(int)
-            wcsx=wcs.WCS(hdul[0].header)
+            wcsx=hdul[0].header
         #alist.append(assign)
         aa=np.zeros((scaleup*len(assign),scaleup*len(assign[0])),dtype=int)
         for l in range(len(aa)):

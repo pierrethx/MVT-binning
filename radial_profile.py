@@ -4,6 +4,7 @@ import tkinter
 from tkinter.filedialog import askopenfilename
 from matplotlib.widgets import Cursor,Slider
 from astropy.io import fits
+from astropy import wcs
 import functions,bin_accretion,wvt_iteration
 from scipy.ndimage.measurements import center_of_mass
 from scipy import stats
@@ -13,7 +14,7 @@ import time
 def circularb(x,A,r,b):
     return A*(1+(x/r)**2)**(0.5-3*b)
 
-def alignwcs(wcs,angles):
+def alignwcs(wcsx,angles):
     tags=[]
     for ang in (angles*180/np.pi):
         if ang<45:
@@ -45,8 +46,8 @@ def alignwcs(wcs,angles):
                 tags[int(5*taglen/8)]="True Southwest"
                 tags[int(7*taglen/8)]="True Southeast"
     rdirections=np.array([np.cos(angles),np.sin(angles)]).T
-    enddirs=wcs.wcs_pix2world(rdirections,0)
-    wdirs=np.array([ enddirs[i]-wcs.wcs_pix2world([[0,0]],0)[0] for i in range(len(enddirs))]).T
+    enddirs=wcs.WCS(wcsx).wcs_pix2world(rdirections,0)
+    wdirs=np.array([ enddirs[i]-wcs.WCS(wcsx).wcs_pix2world([[0,0]],0)[0] for i in range(len(enddirs))]).T
     wangs=np.angle(wdirs[0]+1j*wdirs[1])
     directions=np.array([np.sin(wangs),np.cos(wangs)]).T
     return directions,tags

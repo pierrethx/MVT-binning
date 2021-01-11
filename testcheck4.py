@@ -106,12 +106,12 @@ for r in range(len(slist)):
         print(signalname)
         with fits.open(signalname) as hdul:
             ston=np.flipud(hdul[0].data)
-            wcsx=wcs.WCS(hdul[0].header)
+            wcsx=hdul[0].header
         signalname=source+"/target"+str(target[t])+"/"+assfits
         print(signalname)
         with fits.open(signalname) as hdul:
             ass=np.flipud(hdul[0].data.astype(int))
-            wcsx=wcs.WCS(hdul[0].header)
+            wcsx=hdul[0].header
 
         bins=int(np.nanmax(ass))
         bcenters=[[0,0] for i in range(bins)]

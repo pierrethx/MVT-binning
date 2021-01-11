@@ -14,6 +14,9 @@ wcsx,signal,var,sourcedir,objname=bin_accretion.minitialize()
 ## objname would be testdata_edge##_wit_###.fits
 ## sourcedir would be stuff/stuff/128x128_peak100/bg##/target##
 
+for w in wcsx:
+    print(wcs.WCS(w).wcs.has_cd())
+
 '''
 expt=np.nanmax(signal[0]/var[0])
 print(expt)
@@ -22,14 +25,14 @@ f,a=plt.subplots()
 a.imshow(np.ma.masked_where(np.isnan(signal[0]/np.sqrt(var[0])),signal[0]/np.sqrt(var[0])),cmap='cubehelix')
 plt.show()
 '''
-
+'''
 for n in range(len(signal)):
     wvt=signal[n]/np.sqrt(var[n])
     header=wcsx[n].to_header()
     hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
     hdul = fits.HDUList([hdu])
     hdul.writeto(sourcedir[n]+"/zston_"+objname[n]+".fits",overwrite=True)
-
+'''
 '''
 for n in range(len(signal)):
     

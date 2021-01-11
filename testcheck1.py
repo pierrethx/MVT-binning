@@ -32,11 +32,11 @@ for t in target:
     signalname=source+"/target"+str(t)+"/"+sigfits
     with fits.open(signalname) as hdul:
         signal=np.flipud(hdul[0].data)
-        wcsx=wcs.WCS(hdul[0].header)
+        wcsx=hdul[0].header
     signalname=source+"/target"+str(t)+"/"+varfits
     with fits.open(signalname) as hdul:
         var=np.flipud(hdul[0].data)
-        wcsx=wcs.WCS(hdul[0].header)
+        wcsx=hdul[0].header
 
     ssum=np.sum(signal)
     svar=np.sum(var)
@@ -48,11 +48,12 @@ for t in target:
     signalname=source+"/target"+str(t)+"/block_"+sigfits
     with fits.open(signalname) as hdul:
         signal=np.flipud(hdul[0].data)
-        wcsx=wcs.WCS(hdul[0].header)
+        wcsx=hdul[0].header
     signalname=source+"/target"+str(t)+"/block_"+varfits
     with fits.open(signalname) as hdul:
         var=np.flipud(hdul[0].data)
-        wcsx=wcs.WCS(hdul[0].header)
+        wcsx=hdul[0].header
+
 
     ssum=np.sum(signal)
     svar=np.sum(var)

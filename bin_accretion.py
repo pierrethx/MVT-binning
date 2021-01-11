@@ -74,12 +74,12 @@ def initialize(enternew=True):
     ## to get the directory of the file so that we can save new files there
 
     ##filename is a string locating the selected file
-    with fits.open(signalname) as hdul:
+    with fits.open(signalname,checksum=True) as hdul:
         signal=np.flipud(hdul[0].data)
-        wcsx=wcs.WCS(hdul[0].header)
-    with fits.open(varname) as hdul:
+        wcsx=hdul[0].header
+    with fits.open(varname,checksum=True) as hdul:
         var=np.flipud(hdul[0].data)
-    
+        
     return wcsx,signal,var,sourcedir,objname
 
 ## this function allows one to select multiple sets of files at once. it is better
@@ -122,7 +122,7 @@ def minitialize():
                             objname=signalname.split("/")[-1]
                             with fits.open(signalname) as hdul:
                                 signal=np.flipud(hdul[0].data)
-                                wcsx=wcs.WCS(hdul[0].header)
+                                wcsx=hdul[0].header
                             with fits.open(varname) as hdul:
                                 var=np.flipud(hdul[0].data)
                             wcsxlist.append(wcsx)
@@ -177,10 +177,10 @@ def minitialize():
                         print("Good files! Moving on")
                     sourcedir="/".join(signalname.split("/")[:-1])
                     objname=signalname.split("/")[-1]
-                    with fits.open(signalname) as hdul:
+                    with fits.open(signalname,checksum=True) as hdul:
                         signal=np.flipud(hdul[0].data)
-                        wcsx=wcs.WCS(hdul[0].header)
-                    with fits.open(varname) as hdul:
+                        wcsx=hdul[0].header
+                    with fits.open(varname,checksum=True) as hdul:
                         var=np.flipud(hdul[0].data)
                     wcsxlist.append(wcsx)
                     signallist.append(signal)
@@ -330,7 +330,7 @@ def cc_accretion(signal,var,target):
     
 
 if __name__ == "__main__":
-    wcsx,signal,var,sourcedir,objname=initialize(enternew=True)
+    wcsx,signal,var,sourcedir,objname=initialize()
     target=300
     mid=time.time()
     binlist,geocarray,scalearray=cc_accretion(signal,var,target)

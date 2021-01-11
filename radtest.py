@@ -29,7 +29,7 @@ yun=[]
 
 with fits.open(signalname) as hdul:
     ston=np.flipud(hdul[0].data)
-    wcsx=wcs.WCS(hdul[0].header)
+    wcsx=hdul[0].header
 
 center=center_of_mass(np.ma.masked_where(np.isnan(ston),ston)) #as usual is (y,x)
 scale=0.5*np.sqrt(len(ston)**2+len(ston[0])**2)

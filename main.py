@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import tkinter
 from tkinter.filedialog import askopenfilename
 from astropy.io import fits
+from astropy import wcs
 import functions,bin_accretion,wvt_iteration
 import scipy.spatial as sp
 import time
@@ -43,37 +44,39 @@ def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
 
 def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
     
-    header=wcsx.to_header()
-    hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
+    hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
     hdul = fits.HDUList([hdu])
+    manipulate(hdul)
     if weighting:
-        hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_sig.fits",overwrite=True)
+        hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_sig.fits",overwrite=True,checksum=True)
     else:
-        hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_sig.fits",overwrite=True)
+        hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_sig.fits",overwrite=True,checksum=True)
 
-    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=header)
+    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=wcsx)
     hdul2 = fits.HDUList([hdu2])
+    #4manipulate(hdul2)
     if weighting:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_var.fits",overwrite=True)
+        hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_var.fits",overwrite=True,checksum=True)
     else:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_var.fits",overwrite=True)
+        hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_var.fits",overwrite=True,checksum=True)
 
 def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
     blockout(target,wvt,ston)
-    header=wcsx.to_header()
-    hdu = fits.PrimaryHDU(np.flipud(wvt),header=header)
+    hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
     hdul = fits.HDUList([hdu])
+    manipulate(hdul)
     if weighting:
-        hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_sig.fits",overwrite=True)
+        hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_sig.fits",overwrite=True,checksum=True)
     else:
-        hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_sig.fits",overwrite=True)
+        hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_sig.fits",overwrite=True,checksum=True)
 
-    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=header)
+    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=wcsx)
     hdul2 = fits.HDUList([hdu2])
+    #manipulate(hdul2)
     if weighting:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_var.fits",overwrite=True)
+        hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_var.fits",overwrite=True,checksum=True)
     else:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_var.fits",overwrite=True)
+        hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_var.fits",overwrite=True,checksum=True)
 
 def maketargetscatter(target,binlist,signal,var):
     fig,ax=plt.subplots()
@@ -109,16 +112,16 @@ def blockout(target,wvt,ston):
                 #ston[y][x]=0
 
 def saveston(wcsx,ston,sourcedir,objname,subfolder="unbinned"):
-    header=wcsx.to_header()
-    hdu3 = fits.PrimaryHDU(np.flipud(ston),header=header)
+    hdu3 = fits.PrimaryHDU(np.flipud(ston),header=wcsx)
     hdul3 = fits.HDUList([hdu3])
-    hdul3.writeto(sourcedir+"/"+subfolder+"/zston_"+objname+".fits",overwrite=True)
+    #manipulate(hdul3)
+    hdul3.writeto(sourcedir+"/"+subfolder+"/zston_"+objname+".fits",overwrite=True,checksum=True)
 
 def saveassign(wcsx,assign,sourcedir,objname,subfolder="unbinned"):
-    header=wcsx.to_header()
-    hdu3 = fits.PrimaryHDU(np.flipud(assign),header=header)
+    hdu3 = fits.PrimaryHDU(np.flipud(assign),header=wcsx)
     hdul3 = fits.HDUList([hdu3])
-    hdul3.writeto(sourcedir+"/"+subfolder+"/z_"+objname+"_assigned.fits",overwrite=True)
+    #manipulate(hdul3)
+    hdul3.writeto(sourcedir+"/"+subfolder+"/z_"+objname+"_assigned.fits",overwrite=True,checksum=True)
 
 if __name__ == "__main__":
     wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
