@@ -29,6 +29,13 @@ def gettarget(initial=0):
         raise NameError("No target, goodbye.")
     return target
 
+def trim(lis,targ):
+    other=[]
+    for i in range(len(lis)):
+        if lis[i]<=targ:
+            other.append(lis[i])
+    return other
+
 def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
     ## this is the most important function
     ## first we do bin accretion. then iteration. the wvt and vwvt is not necessary here but im scared to remove it
@@ -46,7 +53,7 @@ def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=
     
     hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
     hdul = fits.HDUList([hdu])
-    manipulate(hdul)
+    #manipulate(hdul)
     if weighting:
         hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_sig.fits",overwrite=True,checksum=True)
     else:
@@ -61,10 +68,10 @@ def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=
         hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_var.fits",overwrite=True,checksum=True)
 
 def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
-    blockout(target,wvt,ston)
+    wvt,vwvt=blockout(target,wvt,vwvt,ston)
     hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
     hdul = fits.HDUList([hdu])
-    manipulate(hdul)
+    #manipulate(hdul)
     if weighting:
         hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_sig.fits",overwrite=True,checksum=True)
     else:
@@ -77,6 +84,25 @@ def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weigh
         hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_var.fits",overwrite=True,checksum=True)
     else:
         hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_var.fits",overwrite=True,checksum=True)
+
+def saveblockoutoldfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
+    blockout_old(target,wvt,ston)
+    hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
+    hdul = fits.HDUList([hdu])
+    #manipulate(hdul)
+    if weighting:
+        hdul.writeto(sourcedir+"/"+subfolder+"/oblock_"+objname+"_wit_sig.fits",overwrite=True,checksum=True)
+    else:
+        hdul.writeto(sourcedir+"/"+subfolder+"/oblock_"+objname+"_cit_sig.fits",overwrite=True,checksum=True)
+
+    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=wcsx)
+    hdul2 = fits.HDUList([hdu2])
+    #manipulate(hdul2)
+    if weighting:
+        hdul2.writeto(sourcedir+"/"+subfolder+"/oblock_"+objname+"_wit_var.fits",overwrite=True,checksum=True)
+    else:
+        hdul2.writeto(sourcedir+"/"+subfolder+"/oblock_"+objname+"_cit_var.fits",overwrite=True,checksum=True)
+
 
 def maketargetscatter(target,binlist,signal,var):
     fig,ax=plt.subplots()
@@ -104,12 +130,48 @@ def maketargetscatter(target,binlist,signal,var):
     ax.plot(grads,gstons,linewidth=0,marker="s")
     plt.show()
 
-def blockout(target,wvt,ston):
+def blockout_old(target,wvt,ston):
     for y in range(len(ston)):
         for x in range(len(ston[y])):
             if ston[y][x]<=target*0.5:
                 wvt[y][x]=0
-                #ston[y][x]=0
+                ston[y][x]=0
+
+def blockout(target,wvt,vwvt,ston):
+    ybin=[]
+    continuous=False
+    for y in range(len(ston)):
+        for x in range(len(ston[y])):
+            ybin.append(ston[y][x])
+    binsz=100
+    fig,ax=plt.subplots()
+    negacc=0
+    nn,bins,patches=ax.hist(trim(ybin,100),binsz,alpha=0.5)
+    if not continuous:
+        minb=np.argmax(nn)
+        for c in range(len(nn)):
+            if bins[c]>=target:
+                break
+            elif bins[c+1]<=0:
+                negacc+=nn[c]
+            else:
+                if negacc>0:
+                    negacc*=0.95
+                    negacc-=nn[c]
+                elif nn[c]<nn[minb]:
+                    minb=c
+        if bins[minb+2]>=target and nn[minb+2]<=nn[minb]:
+            while bins[minb]>0 and nn[minb-1]>nn[minb]:
+                minb-=1
+        ## this is a minimum
+        cutoff=0.5*(bins[minb]+bins[minb+1])
+        for y in range(len(ston)):
+            for x in range(len(ston[y])):
+                if ston[y][x]<cutoff:
+                    wvt[y][x]=0
+                    vwvt[y][x]=0
+    return wvt,vwvt
+
 
 def saveston(wcsx,ston,sourcedir,objname,subfolder="unbinned"):
     hdu3 = fits.PrimaryHDU(np.flipud(ston),header=wcsx)
@@ -150,6 +212,11 @@ if __name__ == "__main__":
     wvt,ston=functions.generate_wvt4(binlist,signal,var,np.full(len(binlist),1),True)
     wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1),True)
     
-    #saveiteratedfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder="target"+str(target))
-    #saveblockoutfits(target,binlist,wcsx,signal,var,objname,sourcedir,subfolder="target"+str(target))
-    #saveston(wcsx,signal,var,sourcedir,objname+"_wit",subfolder="target"+str(target))
+    subfolder="target"+str(target)
+
+    vwvt=functions.generate_wvt(binlist,var)
+    saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
+    saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
+    saveston(wcsx,ston,sourcedir,objname,subfolder=subfolder)
+    assign=functions.assign(binlist,target,ston,signal)
+    saveassign(wcsx,assign,sourcedir,objname,subfolder=subfolder)

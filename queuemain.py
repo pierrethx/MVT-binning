@@ -45,6 +45,7 @@ if __name__ == "__main__":
             main.saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
             functions.convergence(eps,diflist,sourcedir,objname,subfolder=subfolder)
             main.saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
+            #main.saveblockoutoldfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
             main.saveston(wcsx,ston,sourcedir,objname,subfolder=subfolder)
             assign=functions.assign(binlist,target,ston,signal)
             main.saveassign(wcsx,assign,sourcedir,objname,subfolder=subfolder)

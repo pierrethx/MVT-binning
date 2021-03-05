@@ -202,5 +202,6 @@ for r in range(len(slist)):
     #plt.close()
     
     plt.show()
-    
+
+        
 print("Bye Bye!")
