@@ -360,51 +360,26 @@ def lerp(x):
         arr.append(x[i])
     return np.array(arr)
 
-def assign(binlist,target,ston,signal):
+def assign(binlist,target,ston):
     ## generates an assignment file from a binlist. This makes it easier to reconstruct a binning
     ## without saving the binlist as a separate file or anything.
     ## every bin gets a unique integer value
     ## here we have inadequate bins with negative integer value, and nothing as 0. this makes it easier to visualize how the 
     # binning went when we have large amounts of invalid bins that we want to look closer at
-    assign=np.zeros_like(signal)
+    assign=np.zeros_like(ston)
     binlist2=binlist.copy()
     np.random.shuffle(binlist2)
     g=0
-    h=0
     for i in range(len(binlist2)):
         k0=binlist2[i][0]
-        if ston[k0[0]][k0[1]]<0.5*target:
-            h=h-1
+        if ston[k0[0]][k0[1]]==0:
             for k in binlist2[i]:
-                assign[k[0]][k[1]]=h
+                assign[k[0]][k[1]]=0
         else:
             g=g+1
             for k in binlist2[i]:
                 assign[k[0]][k[1]]=g      
     return assign
-
-def assign(binlist,target,ston,signal):
-    ## generates an assignment file from a binlist. This makes it easier to reconstruct a binning
-    ## without saving the binlist as a separate file or anything.
-    ## every bin gets a unique integer value
-    ## here we have inadequate bins with negative integer value, and nothing as 0. this makes it easier to visualize how the 
-    # binning went when we have large amounts of invalid bins that we want to look closer at
-    assign=np.zeros_like(signal)
-    binlist2=binlist.copy()
-    #np.random.shuffle(binlist2)
-    g=0
-    for i in range(len(binlist2)):
-        k0=binlist2[i][0]
-        if ston[k0[0]][k0[1]]<0.5*target:
-            h=h-1
-            for k in binlist2[i]:
-                assign[k[0]][k[1]]=h
-        else:
-            g=g+1
-            for k in binlist2[i]:
-                assign[k[0]][k[1]]=g      
-    return assign
-
 
 def convergence(contarg,diflist,sourcedir,objname,subfolder="unbinned"):
     ## generates a chart to see how a function converges over many iterations. 

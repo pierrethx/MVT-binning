@@ -47,6 +47,6 @@ if __name__ == "__main__":
             main.saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
             #main.saveblockoutoldfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
             main.saveston(wcsx,ston,sourcedir,objname,subfolder=subfolder)
-            assign=functions.assign(binlist,target,ston,signal)
+            assign=functions.assign(binlist,target,ston)
             main.saveassign(wcsx,assign,sourcedir,objname,subfolder=subfolder)
     print("Bye bye")

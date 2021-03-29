@@ -14,8 +14,10 @@ wcsx,signal,var,sourcedir,objname=bin_accretion.minitialize()
 ## objname would be testdata_edge##_wit_###.fits
 ## sourcedir would be stuff/stuff/128x128_peak100/bg##/target##
 
-for w in wcsx:
-    print(wcs.WCS(w).wcs.has_cd())
+for w in range(len(wcsx)):
+    f,a=plt.subplots()
+    a.imshow(signal[w]/np.sqrt(var[w]),cmap='cubehelix')
+    plt.show()
 
 '''
 expt=np.nanmax(signal[0]/var[0])

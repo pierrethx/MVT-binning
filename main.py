@@ -4,7 +4,7 @@ import tkinter
 from tkinter.filedialog import askopenfilename
 from astropy.io import fits
 from astropy import wcs
-import functions,bin_accretion,wvt_iteration
+import functions,bin_accretion,wvt_iteration,qradial
 import scipy.spatial as sp
 import time
 
@@ -68,7 +68,18 @@ def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=
         hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_var.fits",overwrite=True,checksum=True)
 
 def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
-    wvt,vwvt=blockout(target,wvt,vwvt,ston)
+    blockout(target,wvt,ston)
+
+    ## for visualizing results
+    gig,gax=plt.subplots()
+    edge=qradial.endnumber(objname)
+    gax.imshow(ston,cmap="cubehelix")
+    center=(len(ston[0])/2-0.5,len(ston)/2-0.5)
+    gax.plot([center[0],center[0]],[0,len(ston)],color="red")
+    plt.show()
+    plt.savefig(sourcedir+"/"+subfolder+"/block_"+objname+"_stonover.png")
+    plt.close()
+
     hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
     hdul = fits.HDUList([hdu])
     #manipulate(hdul)
@@ -137,9 +148,10 @@ def blockout_old(target,wvt,ston):
                 wvt[y][x]=0
                 ston[y][x]=0
 
-def blockout(target,wvt,vwvt,ston):
+def blockout(target,wvt,ston):
     ybin=[]
     continuous=False
+    zbg=True
     for y in range(len(ston)):
         for x in range(len(ston[y])):
             ybin.append(ston[y][x])
@@ -155,22 +167,26 @@ def blockout(target,wvt,vwvt,ston):
             elif bins[c+1]<=0:
                 negacc+=nn[c]
             else:
-                if negacc>0:
+                if zbg and negacc>0:
                     negacc*=0.95
                     negacc-=nn[c]
                 elif nn[c]<nn[minb]:
                     minb=c
-        if bins[minb+2]>=target and nn[minb+2]<=nn[minb]:
+        if minb+2>=len(nn) or (bins[minb+2]>=target and nn[minb+2]<=nn[minb]):
             while bins[minb]>0 and nn[minb-1]>nn[minb]:
                 minb-=1
         ## this is a minimum
         cutoff=0.5*(bins[minb]+bins[minb+1])
+        ax.plot([target,target],[0,2000],linestyle="dashed",color="green")
+        ax.plot([cutoff,cutoff],[0,2000],linestyle="dashed",color="black")
         for y in range(len(ston)):
             for x in range(len(ston[y])):
                 if ston[y][x]<cutoff:
                     wvt[y][x]=0
-                    vwvt[y][x]=0
-    return wvt,vwvt
+                    ston[y][x]=0
+        #plt.show()
+        #plt.close()
+    return wvt,ston
 
 
 def saveston(wcsx,ston,sourcedir,objname,subfolder="unbinned"):
@@ -209,8 +225,8 @@ if __name__ == "__main__":
         weighting=True
     binlist,diflist=mainfunc(signal2,var2,target,displayWVT=False,epsilon=-10)
     
-    wvt,ston=functions.generate_wvt4(binlist,signal,var,np.full(len(binlist),1),True)
-    wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1),True)
+    wvt,ston=functions.generate_wvt4(binlist,signal,var,np.full(len(binlist),1),False)
+    wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1),False)
     
     subfolder="target"+str(target)
 
@@ -218,5 +234,5 @@ if __name__ == "__main__":
     saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
     saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
     saveston(wcsx,ston,sourcedir,objname,subfolder=subfolder)
-    assign=functions.assign(binlist,target,ston,signal)
+    assign=functions.assign(binlist,target,ston)
     saveassign(wcsx,assign,sourcedir,objname,subfolder=subfolder)
