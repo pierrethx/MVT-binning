@@ -22,10 +22,9 @@ if __name__ == "__main__":
             signal=siglist[i]
             var=varlist[i]
             objname="_".join(objlist[i].split("_")[:-1])
-            sourcedir="/".join(sourcelist[i].split("/")[:-1])
             target=targlist[m]
-
-            subfolder="target"+str(target)
+            sourcedir=sourcelist[i]
+            subfolder=main.makesubfolder(sourcedir,target)
             #main.saveston(wscxlist[i],siglist[i],varlist[i],sourcelist[i],objlist[i],subfolder="unbinned")
 
             ## this is us applying the data mask. We block out negative values and then run the binning algorithm on it
@@ -42,8 +41,8 @@ if __name__ == "__main__":
             ## then we apply the bins to the actual data and save all our files.
             wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1))
             vwvt=functions.generate_wvt(binlist,var)
-            main.saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
-            functions.convergence(eps,diflist,sourcedir,objname,subfolder=subfolder)
+            #main.saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
+            #functions.convergence(eps,diflist,sourcedir,objname,subfolder=subfolder)
             main.saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
             #main.saveblockoutoldfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
             main.saveston(wcsx,ston,sourcedir,objname,subfolder=subfolder)

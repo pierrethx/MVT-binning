@@ -69,8 +69,13 @@ def initialize(enternew=True):
         signalname="/Users/pierre/Downloads/image.J024815-081723_icubes.wc.c5008_29.fits"
         varname="/Users/pierre/Downloads/image.J024815-081723_icubes.wc.c5008_29_VAR.fits"
 
-    sourcedir="/".join(signalname.split("/")[:-1])
     objname=signalname.split("/")[-1]
+    foldername=signalname.split("/")[-2]
+    if "unbinned" in foldername.lower():
+        sourcedir="/".join(signalname.split("/")[:-2])
+    else:
+        sourcedir="/".join(signalname.split("/")[:-1])
+    
     ## to get the directory of the file so that we can save new files there
 
     ##filename is a string locating the selected file
@@ -175,8 +180,12 @@ def minitialize():
                         varname=placeholder[1]
                         validatesignal=False
                         print("Good files! Moving on")
-                    sourcedir="/".join(signalname.split("/")[:-1])
                     objname=signalname.split("/")[-1]
+                    foldername=signalname.split("/")[-2]
+                    if "unbinned" in foldername.lower():
+                        sourcedir="/".join(signalname.split("/")[:-2])
+                    else:
+                        sourcedir="/".join(signalname.split("/")[:-1])
                     with fits.open(signalname,checksum=True) as hdul:
                         signal=np.flipud(hdul[0].data)
                         wcsx=hdul[0].header
@@ -187,6 +196,7 @@ def minitialize():
                     varlist.append(var)
                     sourcedirlist.append(sourcedir)
                     objnamelist.append(objname)
+
                 else:
                     print("Invalid file type")
         else:
