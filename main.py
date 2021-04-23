@@ -4,7 +4,7 @@ import tkinter
 from tkinter.filedialog import askopenfilename
 from astropy.io import fits
 from astropy import wcs
-import functions,bin_accretion,wvt_iteration,qradial
+import functions,bin_accretion,wvt_iteration
 import scipy.spatial as sp
 from scipy import ndimage
 import time, os
