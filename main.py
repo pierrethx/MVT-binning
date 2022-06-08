@@ -8,6 +8,7 @@ import functions,bin_accretion,wvt_iteration
 import scipy.spatial as sp
 from scipy import ndimage
 import time, os
+from collections import Counter
 
 import tkinter as tk
 from tkinter import simpledialog
@@ -92,13 +93,13 @@ def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=
     else:
         hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_var.fits",overwrite=True,checksum=True)
 
-def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
-    blockout(target,wvt,ston)
+def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True,check=1):
+    blockout(target,wvt,ston,sourcedir+"/"+subfolder+"/block_"+objname+"_hist.png",check)
 
     ## for visualizing results
     gig,gax=plt.subplots()
     edge=endnumber(objname)
-    st=gax.imshow(ston,cmap="cubehelix", vmin=0, vmax=target)
+    st=gax.imshow(ston,cmap="cubehelix", vmin=0, vmax=2*target)
     center=(len(ston[0])/2-0.5,len(ston)/2-0.5)
     #gax.plot([center[0],center[0]],[0,len(ston)],color="red")
     plt.colorbar(st)
@@ -174,7 +175,7 @@ def blockout_old(target,wvt,ston):
                 wvt[y][x]=0
                 ston[y][x]=0
 
-def blockout(target,wvt,ston):
+def blockout(target,wvt,ston,fpath,check=1):
     ## convoluted convolution stuff first
     weights=[]
     xs=[]
@@ -263,17 +264,74 @@ def blockout(target,wvt,ston):
     elif option==1:
         minsize=100
         ## equal length bin method:
-        binsize=int(len(trimmed)/minsize)
-        nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5)
-        ax.clear()
-        while(np.min(nn)<minsize and binsize>1):
-            binsize-=1
-            #print(str(binsize)+"  "+str(np.max(nn)))
-            nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5)
+        print(len(trimmed))
+        if len(trimmed)==0:
+            cutoff=0
+        else:
+            binsize=int(len(trimmed)/minsize)
+            while binsize==0:
+                minsize=int(minsize/2)
+                binsize=int(len(trimmed)/minsize)
+                print(binsize)
+            nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5,histtype='step')
             ax.clear()
-        nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5,edgecolor='black',linewidth=1)
-        minb=np.argmin(nn)
-        cutoff=0.5*(bins[minb]+bins[minb+1])
+            nindices=Counter(np.digitize(trimmed,np.linspace(minacc,target,binsize+1)))
+            '''
+            while(np.min(nn)<minsize and binsize>1):
+                print("tik")
+                binsize-=1
+                print(binsize)
+                #print(str(binsize)+"  "+str(np.max(nn)))
+                nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5,histtype='step')
+                print("tak")
+                ax.clear()
+                print("tok")
+                
+                if nindices.most_common()[-1][1]<minsize:
+                    print("go again", str(nindices.most_common()[-1][1]))
+                else:
+                    print("proceed")
+            '''
+            while nindices.most_common()[-1][1]<minsize and binsize>1:
+                binsize-=1
+                print(binsize)
+                nindices=Counter(np.digitize(trimmed,np.linspace(minacc,target,binsize+1)))
+
+            nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5,edgecolor='black',linewidth=1,histtype='step')
+            minb=np.argmin(nn)
+            cutoff=0.5*(bins[minb]+bins[minb+1])
+            if check>0:
+                ax.clear()
+                steps=[]
+                for i in range(1,len(bins)):
+                    steps.append(bins[i]-bins[i-1])
+                step=np.average(steps)
+                bins2=[i for i in bins]
+                maxxx=target*2
+                minnn=-target
+                while(bins2[0]>minnn):
+                    bins2.insert(0,bins2[0]-step)
+                while(bins2[-1]<maxxx):
+                    bins2.append(bins2[-1]+step)
+                nn,bins,patches=ax.hist(trim2(ybin,minnn,maxxx),5*len(bins2),edgecolor='black',linewidth=1,histtype='step',fill=True,facecolor='black')
+                nn,bins,patches=ax.hist(trim2(ybin,minnn,maxxx),bins2,edgecolor='red',linewidth=2,histtype='step')
+                ax.vlines(cutoff,0,np.max(nn)*1.05,"black",linestyle='dashed',linewidth=3,label="minimum")
+                #ax.vlines([minacc,target],0,np.max(nn),"blue",label="cut range")
+                ax.axvspan(minnn,minacc,facecolor="blue",alpha=0.5)
+                ax.axvspan(target,maxxx,facecolor="blue",alpha=0.5)
+                ax.set_xlim(minnn,maxxx)
+                ax.set_xlabel("SNR")
+                ax.set_ylabel("frequency (pixels)")
+                plt.tight_layout()
+                if check>1:
+                    plt.show()
+                    cup=input("New cutoff?")
+                    try:
+                        cutoff=float(cup)
+                        print("New cutoff selected at "+cup)
+                    except:
+                        print("No new cutoff selected")
+                plt.savefig(fpath)
     elif option==2:
         minsize0=100
         minsize=minsize0
@@ -299,11 +357,12 @@ def blockout(target,wvt,ston):
         cutoff=target
     
     if option!=0:
+        """
         nn,bins,patches=ax.hist(ybin,100,alpha=0.5,edgecolor='black',linewidth=1)
         ax.plot([target,target],[0,2000],linestyle="dashed",color="green")
         ax.plot([cutoff,cutoff],[0,2000],linestyle="dashed",color="black")
         ax.plot([minacc,minacc],[0,2000],linestyle="dashed",color="red")
-
+        """
         for y in range(len(ston)):
             for x in range(len(ston[y])):
                 if ston[y][x]<cutoff:
@@ -363,7 +422,7 @@ if __name__ == "__main__":
         target=-target
     else:
         weighting=True
-    binlist,diflist=mainfunc(signal2,var2,target,displayWVT=False,epsilon=-10)
+    binlist,diflist=mainfunc(signal2,var2,target,displayWVT=False,epsilon=0.01)
     
     wvt,ston=functions.generate_wvt4(binlist,signal,var,np.full(len(binlist),1),False)
     wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1),False)

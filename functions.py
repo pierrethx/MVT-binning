@@ -4,8 +4,21 @@ import tkinter
 from tkinter.filedialog import askopenfilename
 from matplotlib.widgets import Cursor
 from astropy.io import fits
+import random
 
 import scipy.spatial as sp 
+
+SMALL_SIZE=14
+MEDIUM_SIZE=16
+BIGGER_SIZE=20
+
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 def closest_point(point,pointset,weightmap):
     ## as name suggests, we are calculating the closest point. Returns index
@@ -126,6 +139,12 @@ def calculate_SN(binn,sigmap,varmap):
     SN=numerator/np.sqrt(denominator)
     return SN
 
+def calculate_roundness(binn):
+    ncentroid=geometric_center(binn)
+    rmax=sp.distance.cdist([ncentroid],binn).max()
+    R=rmax*np.sqrt(np.pi/len(binn))-1
+    return R
+
 def calculate_signal(binn,sigmap):
     ## sums the signal in a bin from a list of the tuples and the signalmap
     numerator=0
@@ -176,16 +195,27 @@ def calculate_cvt(target,binlist,signal,var):
     ## like calculate scales, but if we were constructing a CVT, scales all=1 so we just need the geometric centers
 
     geomcentres=[]
+    bin2=[]
+
+    unweightedSN=signal/np.abs(var)**0.5
+    unweightedSN=np.where(np.isnan(unweightedSN),0,unweightedSN)
+    #weightedSN=signal**2/np.abs(var)**1.5
+    #weightedSN=np.where(np.isnan(weightedSN),0,weightedSN)
+
     for bindex in range(len(binlist)):
         if len(binlist[bindex])==0:
             print("issue aaaahhhhhh")
-            geomcentres.append((0,0))
         else:
-            geoc=geometric_center(binlist[bindex])
+            #geoc=geometric_center(binlist[bindex])
+            geoc,boof=weighted_centroid(binlist[bindex],unweightedSN)
+            if np.isnan(boof) or boof==0:
+                geoc=geometric_center(binlist[bindex])
+            #geoc=geometric_center(binlist[bindex])
             geomcentres.append(geoc)
+            bin2.append(binlist[bindex])
             
     geocarray=np.array(geomcentres)
-    return geocarray
+    return bin2,geocarray
 
 def generate_wvt(binlist,signal,displayWVT=False):
     ## generates a WVT from a datamap and displays it
@@ -312,7 +342,45 @@ def generate_wvt4(binlist,signal,var,scalearray,displayWVT=False):
         image=ax.imshow(wvt,cmap="cubehelix")
         fig.colorbar(image)
         plt.show()
-    return wvt, ston         
+    return wvt, ston   
+
+def generate_pass(binlist,signal,var,displayWVT=False):
+    ## generates a WVT and StoN map from signal and var maps and displays the StoN
+    ## and allows you to interact with graph and see the scalelengths
+    wvt=np.zeros_like(signal,dtype=float)
+    ston=np.zeros_like(signal,dtype=float)
+    over=list(range(len(binlist)))
+    random.shuffle(over)
+    value=0
+    for bindex in over:
+        value+=1
+        sig=calculate_signal(binlist[bindex],signal)
+        StoN=calculate_SN(binlist[bindex],signal,var)
+        for point in binlist[bindex]:
+            wvt[point[0]][point[1]]=value
+            if sig==0:
+                ston[point[0]][point[1]]=0
+            else:
+                ston[point[0]][point[1]]=StoN
+    if displayWVT:
+        fig,ax=plt.subplots()
+        def onclick(event):
+            x1,y1=event.xdata,event.ydata
+            for bint in range(len(binlist)):
+                if (int(y1+.5),int(x1+.5)) in binlist[bint]:
+                    binn=binlist[bint]
+                    
+                    print("other pixels in this bin: ")
+                    for tup in binn:
+                        print("x: "+str(tup[1])+", y:"+str(tup[0]))
+                    print("StoN is for this bin: "+str(ston[binn[0][0]][binn[0][1]]))
+                    break
+        cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
+        fig.canvas.mpl_connect('button_press_event',onclick)
+        image=ax.imshow(wvt,cmap="cubehelix")
+        fig.colorbar(image)
+        plt.show()
+    return wvt, ston       
 
 def numdif(x,y):
     ## numerically differentiates a list using symmetric difference quotient.
@@ -381,6 +449,17 @@ def assign(binlist,target,ston):
                 assign[k[0]][k[1]]=g      
     return assign
 
+def reverseassign(map):
+    m=int(np.nanmax(map))+1
+    
+    binlist=[[] for r in range(m)]
+    bbl=[]
+    for y in range(len(map)):
+        for x in range(len(map[0])):
+            binlist[int(map[y,x])].append((y,x))
+            bbl.append((y,x))  
+    return binlist,bbl
+
 def convergence(contarg,diflist,sourcedir,objname,subfolder="unbinned"):
     ## generates a chart to see how a function converges over many iterations. 
     # This is to check condition 4 of the function converging over
@@ -392,8 +471,11 @@ def convergence(contarg,diflist,sourcedir,objname,subfolder="unbinned"):
     ax.set_xlabel("# of iterations")
     ax.set_ylabel("norm difference")
     xes=range(1,len(diflist)+1)
-    ax.plot([1,xes[-1]],[contarg,contarg],linestyle="dashed")
+    if(contarg>0):
+        ax.plot([1,len(diflist)],[contarg,contarg],linestyle="dashed")
+        
     ax.plot(xes,diflist,marker="o")
+    ax.set_yscale('log')
     
     plt.savefig(fpath)
     plt.close()

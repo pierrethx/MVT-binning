@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tkinter
 from tkinter.filedialog import askopenfilename
 from astropy.io import fits
-import bin_accretion
+#import bin_accretion
 from astropy import wcs
 from scipy.ndimage.measurements import center_of_mass
 

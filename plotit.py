@@ -7,17 +7,33 @@ from tkinter.filedialog import askopenfilename
 from astropy.io import fits
 from astropy import wcs
 from astropy.visualization.wcsaxes import WCSAxes
-import functions,bin_accretion,wvt_iteration,radial_profile
+import functions,bin_accretion,wvt_iteration,radial_profile,main
 import scipy.spatial as sp
 
 wcsx,signal,var,sourcedir,objname=bin_accretion.minitialize()
 ## objname would be testdata_edge##_wit_###.fits
 ## sourcedir would be stuff/stuff/128x128_peak100/bg##/target##
+stonport=True
 
-for w in range(len(wcsx)):
-    f,a=plt.subplots()
-    a.imshow(signal[w]/np.sqrt(var[w]),cmap='cubehelix')
-    plt.show()
+if stonport:
+    for w in range(len(wcsx)):
+        f,a=plt.subplots()
+        ston=signal[w]
+        st=a.imshow(ston,cmap='cubehelix')
+        plt.colorbar(st)
+        #plt.savefig(sourcedir[w]+"/target5/block_"+objname[w]+"_stonover.png")
+        #main.saveston(wcsx[w],ston,sourcedir[w],objname[w],subfolder="unbinned")
+        plt.show()
+else:
+    for w in range(len(wcsx)):
+        f,a=plt.subplots()
+        ston=signal[w]/np.sqrt(var[w])
+        st=a.imshow(ston,cmap='cubehelix',vmin=0,vmax=10)
+        plt.colorbar(st)
+        #plt.savefig(sourcedir[w]+"/unbinned/block_"+objname[w]+"_stonover.png")
+        #main.saveston(wcsx[w],ston,sourcedir[w],objname[w],subfolder="unbinned")
+        plt.show()
+
 
 '''
 expt=np.nanmax(signal[0]/var[0])

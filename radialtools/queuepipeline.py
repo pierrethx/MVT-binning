@@ -1,4 +1,4 @@
-import bin_accretion,main,qradial,queuemain,generatetestdata,radial_profile,functions
+import bin_accretion,main,radialtools.qradial as qradial,queuemain,generatetestdata,radial_profile,functions
 import numpy as np
 import matplotlib.pyplot as plt
 

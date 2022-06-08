@@ -14,6 +14,30 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
+def convergencelist(contarglist,diflistlist,targlist,sourcedir,objname,subfolder="unbinned"):
+    ## generates a chart to see how a function converges over many iterations. 
+    # This is to check condition 4 of the function converging over
+    fpath=sourcedir+"/"+subfolder+"/y_"+objname+"_convergence.png"
+
+    fig,ax=plt.subplots()
+    ax.set_xlabel("iteration number")
+    ax.set_ylabel("normalized difference")
+
+    for i in range(len(contarglist)):
+        n=len(diflistlist[i])
+        diflist=np.where(np.isnan(diflistlist[i]),np.zeros_like(diflistlist[i]),diflistlist[i])[1:]
+        
+        xes=range(1,len(diflist)+1)
+        if(contarglist[i]>0):
+            ax.plot([1,len(diflist)],[contarglist[i],contarglist[i]],linestyle="dashed")
+            
+        ax.plot(xes,diflist,marker="o",label=targlist[i])
+    ax.set_yscale('log')
+    fig.legend(title="Target SNR")
+    plt.tight_layout()
+    
+    plt.savefig(fpath)
+    plt.close()
 
 if __name__ == "__main__":
 
@@ -29,6 +53,8 @@ if __name__ == "__main__":
             contqueue=False
     print("Files loaded!")
     for i in range(len(sourcelist)):
+        epslist=[]
+        diflistlist=[]
         for m in range(len(targlist)):
             
             wcsx=wcsxlist[i]
@@ -56,10 +82,12 @@ if __name__ == "__main__":
             wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1))
             vwvt=functions.generate_wvt(binlist,var)
             main.saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
-            functions.convergence(eps,diflist,sourcedir,objname,subfolder=subfolder)
-            main.saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
+            main.saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder,check=1)
             #main.saveblockoutoldfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
             main.saveston(wcsx,ston,sourcedir,objname,subfolder=subfolder)
             assign=functions.assign(binlist,target,ston)
             main.saveassign(wcsx,assign,sourcedir,objname,subfolder=subfolder)
+            epslist.append(eps)
+            diflistlist.append(diflist)
+        convergencelist(epslist,diflistlist,targlist,sourcedir,objname)
     print("Bye bye")

@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt 
 from matplotlib.widgets import Cursor,Slider,Button
-import tkinter
+#import tkinter
 from tkinter.filedialog import askopenfilename
 from astropy.io import fits
 from astropy import wcs
 from astropy.visualization.wcsaxes import WCSAxes
-import functions,bin_accretion,wvt_iteration
+#import functions,bin_accretion,wvt_iteration
 import scipy.spatial as sp
 
 ## The Sarazin circular beta model supposes that the brightness profile is like

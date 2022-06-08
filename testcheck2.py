@@ -66,7 +66,7 @@ ax.plot(xun,yun,linewidth=0,marker=".",label="unbinned")
 ax.set_xlabel("Radius from center")
 ax.set_ylabel("Signal-to-noise from center")
 
-target=[3,5,10]
+target=[5]
 xes=[]
 yes=[]
 aes=[]
@@ -76,6 +76,7 @@ source="/".join(signalname.split("/")[:-2])
 objname=signalname.split("/")[-1]
 stonfits=".".join(objname.split(".")[:-1])+"_wit.fits"
 '''
+print(sourcedir.split("/"))
 source="/".join(sourcedir.split("/")[:-1])
 stonfits="zston_"+"_".join(objname.split("_")[:-1])+".fits"
 assfits="z_"+"_".join(objname.split("_")[:-1])+"_assigned.fits"

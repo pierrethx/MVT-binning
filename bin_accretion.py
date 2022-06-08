@@ -51,11 +51,13 @@ def initialize(enternew=True):
                         print("Invalid sig file type")
                 else:
                     if ".fits" in placeholder[0] and ".fits" in placeholder[1]:
-                        if "var" in placeholder[0].lower() or "sig" in placeholder[1].lower():
+                        place0=placeholder[0].split("/")[-1]
+                        place1=placeholder[1].split("/")[-1]
+                        if "var" in place0.lower() or "sig" in place1.lower():
                             varname=placeholder[0]
                             signalname=placeholder[1]
                             validatesignal=False
-                            print("Good files! Moving on")
+                            print("Good files! Moving on.")
                         else:
                             signalname=placeholder[0]
                             varname=placeholder[1]
@@ -73,6 +75,7 @@ def initialize(enternew=True):
     foldername=signalname.split("/")[-2]
     if "unbinned" in foldername.lower():
         sourcedir="/".join(signalname.split("/")[:-2])
+        print("unbinned folder name, going back one directory level")
     else:
         sourcedir="/".join(signalname.split("/")[:-1])
     
@@ -125,11 +128,17 @@ def minitialize():
 
                             sourcedir="/".join(signalname.split("/")[:-1])
                             objname=signalname.split("/")[-1]
+                            foldername=signalname.split("/")[-2]
                             with fits.open(signalname) as hdul:
                                 signal=np.flipud(hdul[0].data)
                                 wcsx=hdul[0].header
                             with fits.open(varname) as hdul:
                                 var=np.flipud(hdul[0].data)
+                            if "unbinned" in foldername.lower():
+                                sourcedir="/".join(signalname.split("/")[:-2])
+                                print("unbinned folder name, going back one directory level")
+                            else:
+                                sourcedir="/".join(signalname.split("/")[:-1])
                             wcsxlist.append(wcsx)
                             signallist.append(signal)
                             varlist.append(var)
@@ -166,6 +175,24 @@ def minitialize():
                             validatevar=False
                         else:
                             print("invalid var file type")
+                    sourcedir="/".join(signalname.split("/")[:-1])
+                    objname=signalname.split("/")[-1]
+                    foldername=signalname.split("/")[-2]
+                    with fits.open(signalname) as hdul:
+                        signal=np.flipud(hdul[0].data)
+                        wcsx=hdul[0].header
+                    with fits.open(varname) as hdul:
+                        var=np.flipud(hdul[0].data)
+                    if "unbinned" in foldername.lower():
+                        sourcedir="/".join(signalname.split("/")[:-2])
+                        print("unbinned folder name, going back one directory level")
+                    else:
+                        sourcedir="/".join(signalname.split("/")[:-1])
+                    wcsxlist.append(wcsx)
+                    signallist.append(signal)
+                    varlist.append(var)
+                    sourcedirlist.append(sourcedir)
+                    objnamelist.append(objname)
                 else:
                     print("Invalid sig file type")
             else:
@@ -182,15 +209,17 @@ def minitialize():
                         print("Good files! Moving on")
                     objname=signalname.split("/")[-1]
                     foldername=signalname.split("/")[-2]
-                    if "unbinned" in foldername.lower():
-                        sourcedir="/".join(signalname.split("/")[:-2])
-                    else:
-                        sourcedir="/".join(signalname.split("/")[:-1])
+                    
                     with fits.open(signalname,checksum=True) as hdul:
                         signal=np.flipud(hdul[0].data)
                         wcsx=hdul[0].header
                     with fits.open(varname,checksum=True) as hdul:
                         var=np.flipud(hdul[0].data)
+                    if "unbinned" in foldername.lower():
+                        sourcedir="/".join(signalname.split("/")[:-2])
+                        print("unbinned folder name, going back one directory level")
+                    else:
+                        sourcedir="/".join(signalname.split("/")[:-1])
                     wcsxlist.append(wcsx)
                     signallist.append(signal)
                     varlist.append(var)
