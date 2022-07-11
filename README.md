@@ -47,15 +47,20 @@ This program outputs a variety of files:
 
 ### OTHER PRIMARY FILES
 **bin_accretion.py** handles bin accretion and most of the tkinter/file entry.
+
 **wvt_iteration.py** handles iteration, which differs depending on the selected mode(s)
+
 **functions.py** holds functions that are used in the other files.
 
 ## AUXILIARY FILES
 ### DATA GENERATION
 **circular_beta_modeler.py** is a little script that displays an editable Circular Beta profile so that one can gain an intuition for how the parameters modify the shape of the profile.
+
 **generate_testdata.py** contains functions for generating simulated intensity data. It can generate data according to a Circular Beta profile, and also contains some simple cases for which the adaptive binnings performance can be tested.
 
 ### TEST PROCEDURES
 **edge_detect.py** is a simple test that looks for the cessation of signal in a circularly symmetric image (such as in one of our simulated profiles) and outputs the radius at which that occurs. This would not apply to images with arbitrary shapes.
+
 **test_vorbin.py** is a script that is to be used with Cappellari's VorBin package (https://pypi.org/project/vorbin/). It converts .fits file inputs into txt files compatible with the input files of the VorBin code and converts its output back into .fits files.
+
 **testsuite.py** generates a pair of graphs which show SNR, bin roundness (as defined in Diehl and Statler 2006), and bin size as a function of radius. This is used for the visualization of how these parameters change over the image.
