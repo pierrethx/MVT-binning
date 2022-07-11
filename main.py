@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt 
-import tkinter
+import tkinter as tk
 from tkinter.filedialog import askopenfilename
 from astropy.io import fits
 from astropy import wcs
@@ -10,170 +10,113 @@ from scipy import ndimage
 import time, os
 from collections import Counter
 
-import tkinter as tk
-from tkinter import simpledialog
 
-def getname(initial=""):
-    ## for getting the user to name an object
-    application_window = tk.Tk()
-    application_window.withdraw()
-    target = simpledialog.askstring("Input", "What is the objectname?",parent=application_window,initialvalue=initial)
-    if target is None:
-        raise NameError("No name, goodbye.")
-    return target
+SMALL_SIZE=14
+MEDIUM_SIZE=16
+BIGGER_SIZE=20
 
-def gettarget(initial=0):
-    ## for getting the target StoN from user
-    application_window = tk.Tk()
-    application_window.withdraw()
-    target = simpledialog.askfloat("Input", "What is the target Signal-to-Noise?",parent=application_window,initialvalue=initial)
-    if target is None:
-        raise NameError("No target, goodbye.")
-    return target
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
-def trim(lis,targ):
-    other=[]
-    for i in range(len(lis)):
-        if lis[i]<=targ:
-            other.append(lis[i])
-    return other
+def assign(binlist,target,ston):
+    ## generates an assignment file from a binlist. This makes it easier to reconstruct a binning
+    ## without saving the binlist as a separate file or anything.
+    ## every bin gets a unique integer value
+    ## here we have inadequate bins with negative integer value, and nothing as 0. this makes it easier to visualize how the 
+    ## binning went when we have large amounts of invalid bins that we want to look closer at
+    assign=np.zeros_like(ston)
+    binlist2=binlist.copy()
+    np.random.shuffle(binlist2)
+    g=0
+    for i in range(len(binlist2)):
+        k0=binlist2[i][0]
+        if ston[k0[0]][k0[1]]==0:
+            for k in binlist2[i]:
+                assign[k[0]][k[1]]=0
+        else:
+            g=g+1
+            for k in binlist2[i]:
+                assign[k[0]][k[1]]=g      
+    return assign
 
-def trim2(lis,minn,targ):
-    other=[]
-    for i in range(len(lis)):
-        if lis[i]<=targ and lis[i]>=minn:
-            other.append(lis[i])
-    return other
-
-def trim3(lis,minn,targ):
-    other=[]
-    for i in range(len(lis)):
-        if lis[i][0]<=targ and lis[i][0]>=minn:
-            other.append(lis[i])
-    return np.array(other)
-
-def endnumber(stri):
-    beg=-1
-    while stri[beg].isdigit():
-        beg-=1
-    if beg==-1:
-        return 0
-    else:
-        print("length: "+(stri[beg+1:]))
-        return int(stri[beg+1:])
-
-def mainfunc(signal,var,target,weighting=True,displayWVT=True,epsilon=10):
-    ## this is the most important function
-    ## first we do bin accretion. then iteration. the wvt and vwvt is not necessary here but im scared to remove it
-    binlist,init_generators,init_scalelengths=bin_accretion.cc_accretion(signal,var,target)
-    binlist,diflist=wvt_iteration.iteration_func(target,signal,var,init_generators,init_scalelengths,epsilon,displaywvt=displayWVT)
-    
-    if displayWVT:
-        wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT)
-        vwvt=functions.generate_wvt(binlist,var)
-        maketargetscatter(target,binlist,signal,var)
-    #blockout(target,wvt,ston)
-    return binlist,diflist
-
-def saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
-    
-    hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
+def saveunblockedfits(wcsx,wvt,vwvt,objname,sourcedir,mode,subfolder="unbinned"):
+    hdu = fits.PrimaryHDU(wvt,header=wcsx)
     hdul = fits.HDUList([hdu])
-    #manipulate(hdul)
-    if weighting:
-        hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_sig.fits",overwrite=True,checksum=True)
-    else:
-        hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_sig.fits",overwrite=True,checksum=True)
-
-    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=wcsx)
+    hdul.writeto(sourcedir+"/"+subfolder+"/"+objname+"_"+mode+"_sig.fits",overwrite=True,checksum=True)
+   
+    hdu2 = fits.PrimaryHDU(vwvt,header=wcsx)
     hdul2 = fits.HDUList([hdu2])
-    #4manipulate(hdul2)
-    if weighting:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_wit_var.fits",overwrite=True,checksum=True)
-    else:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_cit_var.fits",overwrite=True,checksum=True)
 
-def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True,check=1):
-    blockout(target,wvt,ston,sourcedir+"/"+subfolder+"/block_"+objname+"_hist.png",check)
+    hdul2.writeto(sourcedir+"/"+subfolder+"/"+objname+"_"+mode+"_var.fits",overwrite=True,checksum=True)
+ 
+def saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,mode,subfolder="unbinned",check=1):
+    blockout(target,wvt,ston,sourcedir+"/"+subfolder+"/block_"+objname+"_"+mode+"_hist.png",check)
 
     ## for visualizing results
-    gig,gax=plt.subplots()
-    edge=endnumber(objname)
-    st=gax.imshow(ston,cmap="cubehelix", vmin=0, vmax=2*target)
-    center=(len(ston[0])/2-0.5,len(ston)/2-0.5)
-    #gax.plot([center[0],center[0]],[0,len(ston)],color="red")
-    plt.colorbar(st)
-    #plt.show()
-    plt.savefig(sourcedir+"/"+subfolder+"/block_"+objname+"_stonover.png")
-    plt.close()
+    if check>0:
+        gig,gax=plt.subplots()
+        st=gax.imshow(ston,cmap="cubehelix",origin="lower", vmin=0, vmax=2*target)
+        plt.colorbar(st)
+        #plt.show()
+        plt.savefig(sourcedir+"/"+subfolder+"/block_"+objname+"_"+mode+"_ston.png")
+        plt.close()
 
-    hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
+    hdu = fits.PrimaryHDU(wvt,header=wcsx)
     hdul = fits.HDUList([hdu])
     #manipulate(hdul)
-    if weighting:
-        hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_sig.fits",overwrite=True,checksum=True)
-    else:
-        hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_sig.fits",overwrite=True,checksum=True)
+    hdul.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_"+mode+"_sig.fits",overwrite=True,checksum=True)
 
-    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=wcsx)
+    hdu2 = fits.PrimaryHDU(vwvt,header=wcsx)
     hdul2 = fits.HDUList([hdu2])
     #manipulate(hdul2)
-    if weighting:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_wit_var.fits",overwrite=True,checksum=True)
+    hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_"+mode+"_var.fits",overwrite=True,checksum=True)
+
+def saveston(wcsx,ston,sourcedir,objname,mode,subfolder="unbinned"):
+    hdu3 = fits.PrimaryHDU(ston,header=wcsx)
+    hdul3 = fits.HDUList([hdu3])
+    #manipulate(hdul3)
+    hdul3.writeto(sourcedir+"/"+subfolder+"/zston_"+objname+"_"+mode+".fits",overwrite=True,checksum=True)
+
+def saveassign(wcsx,assign,sourcedir,objname,mode,subfolder="unbinned"):
+    hdu3 = fits.PrimaryHDU(assign,header=wcsx)
+    hdul3 = fits.HDUList([hdu3])
+    #manipulate(hdul3)
+    hdul3.writeto(sourcedir+"/"+subfolder+"/z_"+objname+"_"+mode+"_assigned.fits",overwrite=True,checksum=True)
+
+def convergencelist(contarglist,diflistlist,targlist,sourcedir,objname,mode,subfolder="_"):
+    ## generates a chart to see how a function converges over many iterations. 
+    # This is to check condition 4 of the function converging over
+    if subfolder=="_":
+        if len(targlist)==1:
+            fpath=sourcedir+"/"+"target"+str(round(target,5)).strip("0").strip(".")+"/y_"+objname+"_"+mode+"_convergence.png" 
+        else:
+            fpath=sourcedir+"/unbinned/y_"+objname+"_"+mode+"_convergence.png"
     else:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/block_"+objname+"_cit_var.fits",overwrite=True,checksum=True)
+        fpath=sourcedir+"/"+subfolder+"/y_"+objname+"_"+mode+"_convergence.png"
 
-def saveblockoutoldfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder,weighting=True):
-    blockout_old(target,wvt,ston)
-    hdu = fits.PrimaryHDU(np.flipud(wvt),header=wcsx)
-    hdul = fits.HDUList([hdu])
-    #manipulate(hdul)
-    if weighting:
-        hdul.writeto(sourcedir+"/"+subfolder+"/oblock_"+objname+"_wit_sig.fits",overwrite=True,checksum=True)
-    else:
-        hdul.writeto(sourcedir+"/"+subfolder+"/oblock_"+objname+"_cit_sig.fits",overwrite=True,checksum=True)
-
-    hdu2 = fits.PrimaryHDU(np.flipud(vwvt),header=wcsx)
-    hdul2 = fits.HDUList([hdu2])
-    #manipulate(hdul2)
-    if weighting:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/oblock_"+objname+"_wit_var.fits",overwrite=True,checksum=True)
-    else:
-        hdul2.writeto(sourcedir+"/"+subfolder+"/oblock_"+objname+"_cit_var.fits",overwrite=True,checksum=True)
-
-
-def maketargetscatter(target,binlist,signal,var):
     fig,ax=plt.subplots()
-    ax.set_xlabel("generator radius from center")
-    ax.set_ylabel("bin signal to noise")
-    centx=0
-    centy=0
-    totalm=0
-    gcents=[]
-    grads=[]
-    gstons=[]
-    for binn in binlist:
-        gstons.append(functions.calculate_SN(binn,signal,var))
-        gcent,gmass=functions.weighted_centroid(binn,signal)
-        gcent=functions.geometric_center(binn)
-        centx+=gcent[1]*gmass
-        centy+=gcent[0]*gmass
-        totalm+=gmass
-        gcents.append(gcent)
-    centx=centx/totalm
-    centy=centy/totalm
-    for cent in gcents:
-        grads.append(np.sqrt((cent[0]-centy)**2+(cent[1]-centx)**2))
-    ax.plot([0,np.nanmax(grads)],[target,target],linestyle="dashed",color="navy")
-    ax.plot(grads,gstons,linewidth=0,marker="s")
-    plt.show()
+    ax.set_xlabel("iteration number")
+    ax.set_ylabel("normalized difference")
 
-def blockout_old(target,wvt,ston):
-    for y in range(len(ston)):
-        for x in range(len(ston[y])):
-            if ston[y][x]<=target*0.5:
-                wvt[y][x]=0
-                ston[y][x]=0
+    for i in range(len(contarglist)):
+        diflist=np.where(np.isnan(diflistlist[i]),np.zeros_like(diflistlist[i]),diflistlist[i])[1:]
+        
+        xes=range(1,len(diflist)+1)
+        if(contarglist[i]>0):
+            ax.plot([1,len(diflist)],[contarglist[i],contarglist[i]],linestyle="dashed")
+            
+        ax.plot(xes,diflist,marker="o",label=targlist[i])
+    ax.set_yscale('log')
+    fig.legend(title="Target SNR")
+    plt.tight_layout()
+    
+    plt.savefig(fpath)
+    plt.close()
 
 def blockout(target,wvt,ston,fpath,check=1):
     ## convoluted convolution stuff first
@@ -210,18 +153,18 @@ def blockout(target,wvt,ston,fpath,check=1):
         big=np.array([ybin,weights,ys,xs]).T
         trimmed=trim3(big,np.min(ybin),0)
         minsize=100
-        binsize=int(len(trimmed)/100)
-        nn,bins,patches=ax.hist(trimmed[:,0],binsize,alpha=0.5,edgecolor='black',linewidth=1)
-        while(np.min(nn)<minsize and binsize>1):
+        binnum=int(len(trimmed)/100)
+        nn,bins,patches=ax.hist(trimmed[:,0],binnum,alpha=0.5,edgecolor='black',linewidth=1)
+        while(np.min(nn)<minsize and binnum>1):
             if(nn[0]<0.2*minsize and nn[1]<0.2*minsize):
                 ## suggests we have outliers and should retract the bins
                 print("SNIPP")
                 trimmed=trim3(trimmed,bins[1],0)
-            binsize-=1
-            #print(str(binsize)+"  "+str(np.max(nn)))
-            nn,bins,patches=ax.hist(trimmed[:,0],binsize,alpha=0.5)
+            binnum-=1
+            #print(str(binnum)+"  "+str(np.max(nn)))
+            nn,bins,patches=ax.hist(trimmed[:,0],binnum,alpha=0.5)
             ax.clear()
-        nn,bins,patches=ax.hist(trimmed[:,0],binsize,alpha=0.5,edgecolor='black',linewidth=1)
+        nn,bins,patches=ax.hist(trimmed[:,0],binnum,alpha=0.5,edgecolor='black',linewidth=1)
         ax.clear()
         ## bins has the binedges, nn has number per bin, big.T has the list of [ybin,weight]
         bins=-np.flip(bins)
@@ -263,49 +206,33 @@ def blockout(target,wvt,ston,fpath,check=1):
         plt.show()
     elif option==1:
         minsize=100
-        ## equal length bin method:
+        ## equal width bin method:
         print(len(trimmed))
         if len(trimmed)==0:
             cutoff=0
         else:
-            binsize=int(len(trimmed)/minsize)
-            while binsize==0:
+            binnum=int(len(trimmed)/minsize)
+            while binnum==0:
                 minsize=int(minsize/2)
-                binsize=int(len(trimmed)/minsize)
-                print(binsize)
-            nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5,histtype='step')
+                binnum=int(len(trimmed)/minsize)
+                print(binnum)
+            nn,bins,patches=ax.hist(trimmed,binnum,alpha=0.5,histtype='step')
             ax.clear()
-            nindices=Counter(np.digitize(trimmed,np.linspace(minacc,target,binsize+1)))
-            '''
-            while(np.min(nn)<minsize and binsize>1):
-                print("tik")
-                binsize-=1
-                print(binsize)
-                #print(str(binsize)+"  "+str(np.max(nn)))
-                nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5,histtype='step')
-                print("tak")
-                ax.clear()
-                print("tok")
-                
-                if nindices.most_common()[-1][1]<minsize:
-                    print("go again", str(nindices.most_common()[-1][1]))
-                else:
-                    print("proceed")
-            '''
-            while nindices.most_common()[-1][1]<minsize and binsize>1:
-                binsize-=1
-                print(binsize)
-                nindices=Counter(np.digitize(trimmed,np.linspace(minacc,target,binsize+1)))
+            nindices=Counter(np.digitize(trimmed,np.linspace(minacc,target,binnum+1)))
 
-            nn,bins,patches=ax.hist(trimmed,binsize,alpha=0.5,edgecolor='black',linewidth=1,histtype='step')
+            completeness=False
+            while nindices.most_common()[-1][1]<minsize and not completeness and binnum>1:
+                binnum-=1
+                print(binnum)
+                nindices=Counter(np.digitize(trimmed,np.linspace(minacc,target,binnum+1)))
+            for n in range(1,binnum+1):
+                print(n,nindices[n])
+            nn,bins,patches=ax.hist(trimmed,np.linspace(minacc,target,binnum+1),alpha=0.5,edgecolor='black',linewidth=1,histtype='step')
             minb=np.argmin(nn)
             cutoff=0.5*(bins[minb]+bins[minb+1])
             if check>0:
                 ax.clear()
-                steps=[]
-                for i in range(1,len(bins)):
-                    steps.append(bins[i]-bins[i-1])
-                step=np.average(steps)
+                step=(target-minacc)/binnum
                 bins2=[i for i in bins]
                 maxxx=target*2
                 minnn=-target
@@ -322,16 +249,19 @@ def blockout(target,wvt,ston,fpath,check=1):
                 ax.set_xlim(minnn,maxxx)
                 ax.set_xlabel("SNR")
                 ax.set_ylabel("frequency (pixels)")
-                plt.tight_layout()
+                #plt.savefig(fpath[:-4]+"0.png")
                 if check>1:
-                    plt.show()
-                    cup=input("New cutoff?")
+                    plt.gcf().show()
+                    cup=input("New cutoff? ")
                     try:
                         cutoff=float(cup)
+                        ax.vlines(cutoff,0,np.max(nn)*1.05,"black",linestyle='dotted',linewidth=3,label="user-placed")
                         print("New cutoff selected at "+cup)
                     except:
                         print("No new cutoff selected")
-                plt.savefig(fpath)
+                #plt.tight_layout()
+                plt.legend()
+                plt.savefig(fpath,bbox_inches="tight")
     elif option==2:
         minsize0=100
         minsize=minsize0
@@ -373,65 +303,98 @@ def blockout(target,wvt,ston,fpath,check=1):
 
     return wvt,ston
 
+def trim(lis,targ):
+    other=[]
+    for i in range(len(lis)):
+        if lis[i]<=targ:
+            other.append(lis[i])
+    return other
 
-def saveston(wcsx,ston,sourcedir,objname,subfolder="unbinned"):
-    hdu3 = fits.PrimaryHDU(np.flipud(ston),header=wcsx)
-    hdul3 = fits.HDUList([hdu3])
-    #manipulate(hdul3)
-    hdul3.writeto(sourcedir+"/"+subfolder+"/zston_"+objname+".fits",overwrite=True,checksum=True)
+def trim2(lis,minn,targ):
+    other=[]
+    for i in range(len(lis)):
+        if lis[i]<=targ and lis[i]>=minn:
+            other.append(lis[i])
+    return other
 
-def saveassign(wcsx,assign,sourcedir,objname,subfolder="unbinned"):
-    hdu3 = fits.PrimaryHDU(np.flipud(assign),header=wcsx)
-    hdul3 = fits.HDUList([hdu3])
-    #manipulate(hdul3)
-    hdul3.writeto(sourcedir+"/"+subfolder+"/z_"+objname+"_assigned.fits",overwrite=True,checksum=True)
-
-def makesubfolder(sourcedir,target):
-    subfolder="target"+str(round(target,5)).strip("0").strip(".")
-    try:
-        os.mkdir(sourcedir+"/"+subfolder)
-    except:
-        pass
-        print("already exists")
-    return subfolder
-
+def trim3(lis,minn,targ):
+    other=[]
+    for i in range(len(lis)):
+        if lis[i][0]<=targ and lis[i][0]>=minn:
+            other.append(lis[i])
+    return np.array(other)
 
 if __name__ == "__main__":
-    wcsx,signal,var,sourcedir,objname=bin_accretion.initialize(enternew=True)
 
-    signal2=np.copy(signal)
-    var2=np.copy(var)
-    #var2[signal2<=0]=1e10
-    signal2[signal2<=0]=0
-    
-    
+    ## negative epsilon means iterate that number of times
+    ## positive epsilon gives us a tolerance our iterations must get below
+    eps=-30
 
-    objname=getname("_".join(objname.split("_")[:-1]))
-    target=gettarget()
-    #print(sourcedir)
-    #print(os.path.exists(sourcedir))
-    subfolder=makesubfolder(sourcedir,target)
+    ## minsize depends on smallest viable cell size for resolution, which depends on what instrument you are using
+    ## minsize too large on WVT might break it. Try to avoid that 
+    minsize=30
 
-    #saveston(wcsx,signal,var,sourcedir,objname,subfolder="unbinned")
-    #objname="J024815-081723"
-    ##empty for directly into sourcedir
-    
-    
-    if target<0:
-        weighting=False
-        target=-target
+    ## this toggles between "WVT" and "CVT". See Diehl and Statler 2006 for WVT and Cappellari and Copin 2003 for CVT, 
+    ## though is modified by us
+    ## as well as "WVT2s" and "VT" which are minimum size special methods explained in senior thesis
+    ## "WVT2s" bin accretes, saves interior bins, then iterates only outer, low SNR bins
+    ## VT does WVT but does not use scalelengths, or CVT with geometric center rather than weighted centroid
+    modetypes=[]
+    #modetypes.append("WVT")
+    modetypes.append("CVT")
+    #modetypes.append("VT")
+    #modetypes.append("WVT2s")
+    ## here for easy testing we allow you to select multiple options but 
+    ## unless you were actually using multiple options you would just comment the rest out
+
+
+    targhold="3,5,10"
+    wcsxlist,siglist,varlist,sourcelist,objlist=bin_accretion.minitialize()
+    if len(siglist)==0:
+        print("No files loaded!")
     else:
-        weighting=True
-    binlist,diflist=mainfunc(signal2,var2,target,displayWVT=False,epsilon=0.01)
-    
-    wvt,ston=functions.generate_wvt4(binlist,signal,var,np.full(len(binlist),1),False)
-    wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1),False)
-    
-    
+        print("Files loaded!")
+        targlist=bin_accretion.getmulttarget(targhold)
+        for i in range(len(sourcelist)):
+            for modetype in modetypes:
+                epslist=[]
+                diflistlist=[]
+                wcsx=wcsxlist[i]
+                signal=siglist[i]
+                var=varlist[i]
+                if "_sig.fits" in objlist[i].lower():
+                    objname="_".join(objlist[i].split("_")[:-1])
+                else:
+                    objname=".".join(objlist[i].split(".")[:-1])
+                sourcedir=sourcelist[i]
+                print(sourcedir)
+                for m in range(len(targlist)):
 
-    vwvt=functions.generate_wvt(binlist,var)
-    #saveiteratedfits(target,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
-    saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,subfolder=subfolder)
-    saveston(wcsx,ston,sourcedir,objname,subfolder=subfolder)
-    assign=functions.assign(binlist,target,ston)
-    saveassign(wcsx,assign,sourcedir,objname,subfolder=subfolder)
+                    target=targlist[m]
+                    
+                    subfolder=bin_accretion.makesubfolder(sourcedir,target)
+
+                    ## this is us applying the data mask. We block out negative values and then run the binning algorithm on it
+                    signal2=np.copy(signal)
+                    var2=np.copy(var)
+                    var2[signal2<=0]=1e10
+                    signal2[signal2<=0]=0
+                    
+                    ## this is the most important function
+                    ## first we do bin accretion. then iteration. the wvt and vwvt is not necessary here but im scared to remove it
+                    binlist,init_generators,init_scalelengths=bin_accretion.cc_accretion(signal2,var2,target,minsize=minsize,mode=modetype,display=False)
+                    binlist,diflist=wvt_iteration.iteration_moderator(target,signal2,var2,init_generators,init_scalelengths,eps,mode=modetype,display=False)
+
+                    ## now to generate the binned signal and variance
+                    wvt,ston=functions.generate_wvt3(binlist,signal,var,np.full(len(binlist),1))
+                    vwvt=functions.generate_wvt(binlist,var)
+
+                    saveblockoutfits(target,ston,wcsx,wvt,vwvt,objname,sourcedir,modetype,subfolder,check=1)
+                    #saveunblockedfits(wcsx,wvt,vwvt,objname,sourcedir,modetype,subfolder)
+                    saveston(wcsx,ston,sourcedir,objname,modetype,subfolder)
+                    assig=assign(binlist,target,ston)
+                    saveassign(wcsx,assig,sourcedir,objname,modetype,subfolder)
+                    epslist.append(eps)
+                    diflistlist.append(diflist)
+                convergencelist(epslist,diflistlist,targlist,sourcelist[i],objname,modetype)
+    print("Bye bye")

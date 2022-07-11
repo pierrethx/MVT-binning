@@ -1,76 +1,120 @@
 import numpy as np
 import matplotlib.pyplot as plt 
-import tkinter
+import tkinter as tk
 from tkinter.filedialog import askopenfilename
+from tkinter import simpledialog
 from astropy.io import fits
-import functions 
 import scipy.spatial as sp
-import time
 from astropy import wcs
+import os
+import functions
 
-#from astropy.utils.data import download_file
-def initialize(enternew=True):
+def gettarget(initial=0):
+    ## for getting the target StoN from user
+    application_window = tk.Tk()
+    application_window.withdraw()
+    target = simpledialog.askfloat("Input", "Enter target Signal-to-Noise, or press cancel to finish entering targets",parent=application_window,initialvalue=initial)
+    if target is None:
+        raise NameError("No target, goodbye.")
+    return target
+
+def getmulttarget(initial=0):
+    ## for getting the target StoN from user
+    application_window = tk.Tk()
+    application_window.withdraw()
+    target = simpledialog.askstring("Input", "Enter target Signal-to-Noise levels separated by commas",parent=application_window,initialvalue=initial)
+    cutup=target.split(",")
+    targets=[]
+    for cut in cutup:
+        try:
+            f=float(cut)
+            if f==0:
+                print("0 SNR.",end=" ")
+                raise NameError("0")
+            elif f<0:
+                print("Negative value.",end=" ")
+                raise NameError("0")
+            else:
+                if f in targets:
+                    print("\""+cut+"\" has already been entered.")
+                else:
+                    targets.append(f)
+        except:
+            print("\""+cut+"\" is not a valid target SNR.")
+    if len(targets)==0:
+        raise NameError("No target, goodbye.")
+    else:
+        print(targets)
+    return targets
+
+def makesubfolder(sourcedir,target):
+    subfolder="target"+str(round(target,5)).strip("0").strip(".")
+    try:
+        os.mkdir(sourcedir+"/"+subfolder)
+    except:
+        pass
+        print("already exists")
+    return subfolder
+
+def initialize():
 
     ## First let's select a signal file
     ## first you can select signal, then variance. 
     ## for convenience you can select both files in the first window but they need to have "sig" or "var" in the name
-    if enternew:
-        validatesignal=True
-        validatevar=True
-        while validatesignal:
-            root=tkinter.Tk()
-            root.withdraw()
-            placeholder= askopenfilename(message="Select signal",multiple=True)
-            root.update()
-            root.destroy()
-            if type(placeholder) is tuple:
-                if len(placeholder)>2:
-                    print("Too many files selected.")
-                if len(placeholder)==1:
-                    if ".fits" in placeholder[0]:
-                        signalname=placeholder[0]
-                        print("Good file! Moving on")
-                        while validatevar:
-                            root=tkinter.Tk()
-                            root.withdraw()
-                            place= askopenfilename(message="Select variance")
-                            root.update()
-                            root.destroy()
-                            print("place: ",place)
-                            if ".fits" in place:
-                                varname=place
-                                print("Good file! Moving on")
-                                validatevar=False
-                                validatesignal=False
-                            elif place.strip()=="":
-                                print("var input canceled, back to sig input")
-                                validatevar=False
-                            else:
-                                print("invalid var file type")
-                    else:
-                        print("Invalid sig file type")
-                else:
-                    if ".fits" in placeholder[0] and ".fits" in placeholder[1]:
-                        place0=placeholder[0].split("/")[-1]
-                        place1=placeholder[1].split("/")[-1]
-                        if "var" in place0.lower() or "sig" in place1.lower():
-                            varname=placeholder[0]
-                            signalname=placeholder[1]
+    
+    validatesignal=True
+    validatevar=True
+    while validatesignal:
+        root=tk.Tk()
+        root.withdraw()
+        placeholder= askopenfilename(message="Select signal",multiple=True)
+        root.update()
+        root.destroy()
+        if type(placeholder) is tuple:
+            if len(placeholder)>2:
+                print("Too many files selected.")
+            if len(placeholder)==1:
+                if ".fits" in placeholder[0]:
+                    signalname=placeholder[0]
+                    print("Good file! Moving on")
+                    while validatevar:
+                        root=tk.Tk()
+                        root.withdraw()
+                        place= askopenfilename(message="Select variance")
+                        root.update()
+                        root.destroy()
+                        print("place: ",place)
+                        if ".fits" in place:
+                            varname=place
+                            print("Good file! Moving on")
+                            validatevar=False
                             validatesignal=False
-                            print("Good files! Moving on.")
+                        elif place.strip()=="":
+                            print("var input canceled, back to sig input")
+                            validatevar=False
                         else:
-                            signalname=placeholder[0]
-                            varname=placeholder[1]
-                            validatesignal=False
-                            print("Good files! Moving on")
-                    else:
-                        print("Invalid file type")
+                            print("invalid var file type")
+                else:
+                    print("Invalid sig file type")
             else:
-                raise NameError("Bye bye, see you later.")  
-    else:
-        signalname="/Users/pierre/Downloads/image.J024815-081723_icubes.wc.c5008_29.fits"
-        varname="/Users/pierre/Downloads/image.J024815-081723_icubes.wc.c5008_29_VAR.fits"
-
+                if ".fits" in placeholder[0] and ".fits" in placeholder[1]:
+                    place0=placeholder[0].split("/")[-1]
+                    place1=placeholder[1].split("/")[-1]
+                    if "var" in place0.lower() or "sig" in place1.lower():
+                        varname=placeholder[0]
+                        signalname=placeholder[1]
+                        validatesignal=False
+                        print("Good files! Moving on.")
+                    else:
+                        signalname=placeholder[0]
+                        varname=placeholder[1]
+                        validatesignal=False
+                        print("Good files! Moving on")
+                else:
+                    print("Invalid file type")
+        else:
+            raise NameError("Bye bye, see you later.")  
+    
     objname=signalname.split("/")[-1]
     foldername=signalname.split("/")[-2]
     if "unbinned" in foldername.lower():
@@ -83,14 +127,16 @@ def initialize(enternew=True):
 
     ##filename is a string locating the selected file
     with fits.open(signalname,checksum=True) as hdul:
-        signal=np.flipud(hdul[0].data)
+        signal=hdul[0].data
         wcsx=hdul[0].header
     with fits.open(varname,checksum=True) as hdul:
-        var=np.flipud(hdul[0].data)
+        var=hdul[0].data
         
     return wcsx,signal,var,sourcedir,objname
 
 ## this function allows one to select multiple sets of files at once. it is better
+## you continue to select image files until you do not want to, and then you click cancel
+## you continue to select SNRs until you do not want to, and then you click cancel.
 def minitialize():
     wcsxlist=[]
     signallist=[]
@@ -100,9 +146,9 @@ def minitialize():
     
     validatesignal=True
     while validatesignal:
-        root=tkinter.Tk()
+        root=tk.Tk()
         root.withdraw()
-        placeholder= askopenfilename(message="Select signal",multiple=True)
+        placeholder= askopenfilename(message="Select signal, or select two files with similar names to serve as S and V, or press cancel to quit file selection and move on",multiple=True)
         root.update()
         root.destroy()
         fails=[]
@@ -130,10 +176,10 @@ def minitialize():
                             objname=signalname.split("/")[-1]
                             foldername=signalname.split("/")[-2]
                             with fits.open(signalname) as hdul:
-                                signal=np.flipud(hdul[0].data)
+                                signal=hdul[0].data
                                 wcsx=hdul[0].header
                             with fits.open(varname) as hdul:
-                                var=np.flipud(hdul[0].data)
+                                var=hdul[0].data
                             if "unbinned" in foldername.lower():
                                 sourcedir="/".join(signalname.split("/")[:-2])
                                 print("unbinned folder name, going back one directory level")
@@ -159,9 +205,9 @@ def minitialize():
                     signalname=placeholder[0]
                     print("Good signal file! Moving on")
                     while validatevar:
-                        root=tkinter.Tk()
+                        root=tk.Tk()
                         root.withdraw()
-                        place= askopenfilename(message="Select variance")
+                        place= askopenfilename(message="Select variance to be associated with previously entered signal file.")
                         root.update()
                         root.destroy()
                         print("place: ",place)
@@ -179,10 +225,10 @@ def minitialize():
                     objname=signalname.split("/")[-1]
                     foldername=signalname.split("/")[-2]
                     with fits.open(signalname) as hdul:
-                        signal=np.flipud(hdul[0].data)
+                        signal=hdul[0].data
                         wcsx=hdul[0].header
                     with fits.open(varname) as hdul:
-                        var=np.flipud(hdul[0].data)
+                        var=hdul[0].data
                     if "unbinned" in foldername.lower():
                         sourcedir="/".join(signalname.split("/")[:-2])
                         print("unbinned folder name, going back one directory level")
@@ -211,10 +257,10 @@ def minitialize():
                     foldername=signalname.split("/")[-2]
                     
                     with fits.open(signalname,checksum=True) as hdul:
-                        signal=np.flipud(hdul[0].data)
+                        signal=hdul[0].data
                         wcsx=hdul[0].header
                     with fits.open(varname,checksum=True) as hdul:
-                        var=np.flipud(hdul[0].data)
+                        var=hdul[0].data
                     if "unbinned" in foldername.lower():
                         sourcedir="/".join(signalname.split("/")[:-2])
                         print("unbinned folder name, going back one directory level")
@@ -233,8 +279,6 @@ def minitialize():
 
     return wcsxlist,signallist,varlist,sourcedirlist,objnamelist
 
-## this is used in bin accretion and wvt construction, to check to see that tuples are actually
-## members of the image (Since they both construct bins using a wavefront approach, edges need to be checked)
 def validateappend(target,candidate,check):
     ## candidate is as (y,x)
     try:
@@ -248,11 +292,29 @@ def validateappend(target,candidate,check):
     except:
         pass
 
+def redistribute(binlist,rebinlist,binfo,weightmap):
+    if len(binlist)>0:
+        for bindex in range(len(rebinlist)):
+            for poindex in range(len(rebinlist[bindex])):
+                ## Finding the index of the bin with the closest center
+                centroind=functions.closest_index(rebinlist[bindex][poindex],binfo,weightmap)
+                ## We add the point to that bin
+                ## Don't bother with binfo/binm, last used here:
+                binlist[centroind].append(rebinlist[bindex][poindex])
+    else:
+        binlist.append([])
+        for bindex in range(len(rebinlist)):
+            for poindex in range(len(rebinlist[bindex])):
+                binlist[0].append(rebinlist[bindex][poindex])
+
 ## this is the primary bin accretion function
-def cc_accretion(signal,var,target):
+def cc_accretion(signal,var,target,minsize,mode,mask=None,display=False):
+
+    if mask is None:
+        mask=np.full_like(signal,1)
 
     ## this is the signal-to-noise for each pixel
-    ston=signal/np.sqrt(np.abs(var))
+    ston=signal*mask/np.sqrt(np.abs(var))
     ## to prevent situations where 0/0=nan by making any place where sig=0, ston=0.
     ston=np.where(np.equal(signal,np.zeros_like(signal)),signal,ston)
     var[signal<=0]=0
@@ -260,7 +322,6 @@ def cc_accretion(signal,var,target):
     ## we set up an assignment array to easier check bin loyalties for pixels
     assign=np.full_like(ston,-1)
             
-    #density=ston*np.abs(ston)
     ## density is defined in CC03 as SN squared, sign unimportant since CC03 uses pos data,
     ##  above def would preserve sign, but it doesnt seem like this makes binnings better
     density=ston*ston
@@ -295,13 +356,13 @@ def cc_accretion(signal,var,target):
         assign[centroid[0]][centroid[1]]=0
         ## introduce list of candidates for bin and populate with adjacent cell, checking to see if it is already assigned
         viablecell=[]
-        validateappend(viablecell,(centroid[0]+1,centroid[1]),assign)
-        validateappend(viablecell,(centroid[0]-1,centroid[1]),assign)
-        validateappend(viablecell,(centroid[0],centroid[1]+1),assign)
-        validateappend(viablecell,(centroid[0],centroid[1]-1),assign)
+        validateappend(viablecell,(centroid[0]+1,centroid[1]),assign*mask)
+        validateappend(viablecell,(centroid[0]-1,centroid[1]),assign*mask)
+        validateappend(viablecell,(centroid[0],centroid[1]+1),assign*mask)
+        validateappend(viablecell,(centroid[0],centroid[1]-1),assign*mask)
         binmass=density[centroid[0]][centroid[1]]
         ## do we continue to accrete? Have we reached minimum StoN?
-        accrete=binmass<target**2 and len(viablecell)>0
+        accrete=(len(current)<minsize or binmass<target**2 )and len(viablecell)>0
         while accrete:
             nextpoint=functions.closest_point(centroid,viablecell,density)
             ## Rmax is maxumum roundness. Defined in CC03
@@ -314,7 +375,7 @@ def cc_accretion(signal,var,target):
             rmax=sp.distance.cdist([ncentroid],newbin).max()
             R=rmax*np.sqrt(np.pi/len(newbin))-1
             #if R<=Rmax and np.abs(binmass-target**2)>np.abs(nmass-target**2): here we are saying that the new mass brings the bin closer to the target
-            if R<=Rmax and not np.isnan(nmass) and np.abs(binmass-target**2)>=np.abs(nmass-target**2):
+            if len(newbin)<minsize or binmass>=nmass or (R<=Rmax and not np.isnan(nmass) and np.abs(binmass-target**2)>=np.abs(nmass-target**2)):                ## pixel has been chosen to be accreted. we remove from viablecell (and viable) and add to bin
                 ## pixel has been chosen to be accreted. we remove from viablecell (and viable) and add to bin
                 current.append(nextpoint)
                 viablecell.remove(nextpoint)
@@ -336,7 +397,7 @@ def cc_accretion(signal,var,target):
                 
         ## if bin reaches minimum SN of 0.8target, we accept, otherwise it will be redispersed.
         success=0.8
-        if binmass/(target**2)<success or np.isnan(binmass):
+        if binmass/(target**2)<success or len(current)<minsize-1 or np.isnan(binmass):
             rebinlist.append(current)
             rcentroids.append(centroid)
         else:
@@ -354,30 +415,25 @@ def cc_accretion(signal,var,target):
 
     print("Redistribution time")
 
-    #wvt,ston=functions.generate_wvt3(binlist+rebinlist,signal,var,np.full(len(binlist)+len(rebinlist),1),True)
-
     ## Then we assign each unsuccessfully binned pixel to a successfully bin
-    functions.redistribute(binlist,rebinlist,bcentroids,density)
+    redistribute(binlist,rebinlist,bcentroids,density)
     ## At this point, binlist should contain all of the original points
     ## Now I want to iterate through binlist to get the list of generators. This is really what this was for
     ## Though now is as good of a time as any to create the CVT
-    binlist,geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
-    
-    #wvt,ston=functions.generate_wvt3(binlist,signal,var,scalearray,True)
+    if mode=="CVT":
+        binlist,geocarray=functions.calculate_cvt(binlist,signal,var)
+        scalearray=np.full(len(geocarray),1)
+    elif mode=="VT" or mode=="WVT2s":
+        binlist,geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
+        scalearray=np.full_like(scalearray,1)
+    else:
+        binlist,geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
+   
+    if display:
+        wvt,ston=functions.generate_wvt3(binlist,signal,var,scalearray,10,True)
     
     return binlist,geocarray,scalearray
-    
-
+ 
 if __name__ == "__main__":
-    wcsx,signal,var,sourcedir,objname=initialize()
-    target=300
-    mid=time.time()
-    binlist,geocarray,scalearray=cc_accretion(signal,var,target)
-    print("elapsed time spread method"+str(time.time()-mid))
-    #wvt,ston=functions.generate_wvt2(binlist,signal,var,displayWVT=True)
-    wvt,ston=functions.generate_wvt4(binlist,signal,var,[1]*len(binlist),displayWVT=True)
-    fig,ax=plt.subplots()
-    g=ax.imshow(ston,cmap="cubehelix", vmin=np.nanmin(ston))
-    plt.colorbar(g)
-    plt.show()
-    
+    quop=getmulttarget()
+    print(quop)

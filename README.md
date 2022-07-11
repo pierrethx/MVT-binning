@@ -1,41 +1,61 @@
 ## Adaptive-Binning
-Testing out adaptive binning procedures.
+# Modified Adaptive Binning Methods
 Pierre Thibodeaux at University of California, Santa Barbara
 under the guidance of Dr. Crystal Martin
 
-# MAIN FILES
-**bin_accretion.py** is a program that performs the Bin Accretion algorithm, as defined by Cappellari and Copin (2003). It also holds some of the initialization commands.
-**wvt_iteration.py** is a program that performs the iterative WVT algorithm, as defined by Diehl and Statler (2006).
-functions.py is a reference for functions used in the above two programs.
-**main.py** is a program that runs bin_accretion and wvt_iteration on a file to output a binned file and its effects. This specifically runs the data mask method, one of the two devised ways to handle negative data. Here, we treat the negative signal like zero signal during the binning, and then apply the formulated bins to the real data, with the assumption that the negative signal will be distributed approximately evenly in the bins.
-**queuemain.py** runs the main.py sequence for a set of files and a set of target S/N. It uses the functions from main, but is better equipped to quickly process multiple files.
+We present a set of codes for adaptively binning 2D intensity maps to form less-resolved bins with greater signal-to-noise ratio (SNR). These methods are based off of Cappellari and Copin's Centroidal Voronoi Tessellation (2003) and Diehl and Statler's Weighted Voronoi Tessellation (2006) algorithms. These modifications allow the methods to be run on data that include negative values, which may result from procedures like continuum subtraction in emission line images.
 
-*some of the following files do not work unless locally moved to the main folder with the other primary files. They have been put into the smaller folders for organizational purpose.*
+Here, we treat the negative signal like zero signal during the binning, and then apply the formulated bins to the real data. This is based on the assumption that the positive and negative noise will be distributed approximately evenly in the bins and should cancel out when large enough bins are formed.
 
-# DATAGENERATION
-**generatecolori.py** generates a suite of sh scripts that can be used to look at various line images after binning them. ds9 doesnt allow you to save RGB images, so in order to access them with whatever parameters you want, you need to access them through a sh script using line commands. It is kind of tedious to set them all up and name them, so this does that. prescript.sh is meant to be easy to modify to direct to the users instance of ds9 so that they dont have to edit each colorimage script.
-**plotit.py** has done many various things but it is currently configured to make a StoN file when given an unbinned signal and variance. You can technically apply this to binned images but the StoN for a bin is not simply the S of one of its pixels over sqrt(V) for that pixel, the entire bin needs to be considered.
-**generatetestdata.py** generates a set of Circular Beta Profiles (Sarazin 1988) for the purpose of binning them to see how the code responds. Generates profiles with varying parameters. The variance is modified with an extra parameter to better match the slim variance of real data.
-**generatetestcases.py** generates a set of test cases to check that the code works for simple geometric situations.
+There are two stages of Adaptive Binning: Bin Accretion, which was created in Cappellari and Copin (2003), and Iteration, where the bins formed are regularized, the SNR is equalized between bins. Our method also masks bins which do not sufficiently form SNR, and bases the cutoff value on the shape of the SNR histogram over the images.
 
-# VISUALIZATIONTOOLS
-**showiteration.py** constructs a gif to visualize the wvt construction process
-**circular_beta_modeler.py** displays a circular beta profile with mutable parameters to visualize the curve and develop a fitting procedure
-**3d_visualizer.py** displays a .fits file as a 3-d plot.
-fullbins.py generates a panel of images to compare various levels of binning.
-
-# RADIALTOOLS
-**radial_profile.py** generates a radial profile for a binned or unbinned signal file and fits it to a Circular Beta Profile (Sarazin 1988)
-**qradial.py** performs the function of radial_profile on multiple files and plots recovered edge data on a plot.
-**queuepipeline.py** takes unbinned files and performs queuemain and qradial on them to generate a plot of recovered edge data.
-
-# CHECKTOOLS
-**radtest.py** is the precursor to testcheck2.py
-**scalestest.py** runs through the binning with 4 different formulations of the calculate_scales function (which is the step in the WVT that is most directly hindered by the presence of negative data)
-**testcheck1.py** checks that signal and variance are conserved from an unbinned image to its binned product.
-**testcheck2.py** looks at StoN as a function of radius from center for binned images and also looks at histograms to show overall brightness/StoN distributions for binned/unbinned images.
-**testcheck3.py** looks at the roundness of the bins, following the procedure in DS06.
-**testcheck4.py** is a modification of testcheck2.py to generate a more informative figure that compares the results of different binning levels alongside each other. Following the writeup, 4 should correspond to convergence of the program, but that must be constructed and saved at runtime unlike the rest of the tests, which are meant to be applied after the binning has been completed. So I just used this empty file for something else
-**queuemain2.py** runs a procedure modified from main.py. It instead uses the expansion method, which expands bins that are 0 or negative, so that they might find more signal elsewhere.
+## Quickstart
+Place all unbinned signal and variance files in a directory titled "unbinned" inside the desired file location. Run main.py on these files, and their outputs will be deposited in directories that are parallel to "unbinned", according to their target SNR. This program is best run in an astroconda (https://astroconda.readthedocs.io/en/latest/) virtual environment of Python 3.
 
 
+## PRIMARY FILES
+
+### MAIN.PY
+**main.py** is the script to run to perform adaptive binning. When run, a tkinter GUI will appear, allowing the user to select multiple files to serve as the signal and variance input images. This will repeat until the user cancels the window, confirming all input sets of files to be used. It will also ask for target SNR levels, seperated by commas. The program will process EVERY set of files at EVERY target SNR levels, so it is better to break up long jobs that might get interrupted.
+
+The other toggleable parameters of this program must be edited in the code, which consist of:
+- the number of iterations OR convergence tolerance
+- the minimum size of a bin (which depends on the minimum resolution element of the instrument which produced the images)
+- which binning modes to use. There are four:
+    1. 'CVT': Centroidal Voronoi Tessellation. Aside from our negative masking procedure, this is similar to Cappellari and Copin's formulation. This forms a Voronoi Tessellation then iteratively improves upon it by placing the generators of the tessellation at the centroids of each bin.
+    2. 'WVT': Weighted Voronoi Tessellation. Aside from our negative masking procedure, this is similar to Diehl and Statler's formulation. This forms a Weighted Voronoi Tessellation (where the bin sizes are determined by an additional scalelength parameter) then iteratively improves upon it by placing recalculating the scalelengths (which replaces the process of moving the bin generators according to the centroids). It is advised one does not choose a minsize too big or else it will calculate poor initial scalelengths and bins.
+    3. 'VT': Voronoi Tessellation. This can be interpreted as a CVT where we use geometric centers rather than centroids, or a WVT where we never calculate scalelength. This method was devised to preserve minimum bin size, since the previous two methods have difficulty achieving that, though does not attempt to tend towards better bin configurations, as the previous do. 
+    4. 'WVT2s': Two Stage Voronoi Tessellation. This method was devised to preserve minimum bin size while also iterating (some) bins. It performs bin accretion, preserves bins above a certain SNR, then performs iteration on the unpreserved bins.
+- The option to choose a new cutoff for the end bin mask. This is done by changing the check parameter of *saveblockoutfits*:
+    - check=0 uses the code-calculated cut and outputs no image of the histogram
+    - check=1 uses the code-calculated cut and outputs an image of the histogram
+    - check=2 allows the user to override the cut and outputs an image of the histogram
+
+This program outputs a variety of files:
+1. the binned, masked signal fits file (file name is prefaced: "block_" and ends with "_sig.fits")
+2. the binned, masked variance fits file (file name is prefaced: "block_" and ends with "_var.fits")
+    - both of the above may be replaced with the unmasked versions by uncommenting *saveunblockedfits*
+3. the binned SNR map fits file (file name is prefaced "zston_" and ends with ".fits")
+    - may be removed by commenting out *saveston*
+4. the binned assigned map fits file (file name is prefaced "z_" and ends with ".fits")
+    - may be removed by commenting out *saveassign*. These files assign every bin a unique integer, with masked bins 0, and are used for the reconstruction of the bins outside of this program
+5. The png image displaying the SNR histogram used to make the bin mask (file name is prefaced "block_" and ends with "_hist.png")
+6. The png image of the binned SNR map (file name is prefaced "block_" and ends with "_ston.png")
+    - both of the above toggled by changing the check parameter in *saveblockoutfits*. 0 outputs no image, 1 or 2 outputs both
+7. The png image of the convergence over iterations (file name is prefaced "y_" and ends with "_convergence.png")
+    - may be removed by commenting out *convergencelist*. This is to visualize how well the binning method converges, and is placed in "unbinned" if multiple targets are used.
+
+### OTHER PRIMARY FILES
+**bin_accretion.py** handles bin accretion and most of the tkinter/file entry.
+**wvt_iteration.py** handles iteration, which differs depending on the selected mode(s)
+**functions.py** holds functions that are used in the other files.
+
+## AUXILIARY FILES
+### DATA GENERATION
+**circular_beta_modeler.py** is a little script that displays an editable Circular Beta profile so that one can gain an intuition for how the parameters modify the shape of the profile.
+**generate_testdata.py** contains functions for generating simulated intensity data. It can generate data according to a Circular Beta profile, and also contains some simple cases for which the adaptive binnings performance can be tested.
+
+### TEST PROCEDURES
+**edge_detect.py** is a simple test that looks for the cessation of signal in a circularly symmetric image (such as in one of our simulated profiles) and outputs the radius at which that occurs. This would not apply to images with arbitrary shapes.
+**test_vorbin.py** is a script that is to be used with Cappellari's VorBin package (https://pypi.org/project/vorbin/). It converts .fits file inputs into txt files compatible with the input files of the VorBin code and converts its output back into .fits files.
+**testsuite.py** generates a pair of graphs which show SNR, bin roundness (as defined in Diehl and Statler 2006), and bin size as a function of radius. This is used for the visualization of how these parameters change over the image.
