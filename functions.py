@@ -125,6 +125,7 @@ def calculate_cvt(binlist,signal,var):
 
     unweightedSN=signal/np.abs(var)**0.5
     unweightedSN=np.where(np.isnan(unweightedSN),0,unweightedSN)
+    unweightedmass=unweightedSN**2
     #weightedSN=signal**2/np.abs(var)**1.5
     #weightedSN=np.where(np.isnan(weightedSN),0,weightedSN)
 
@@ -133,8 +134,9 @@ def calculate_cvt(binlist,signal,var):
             print("empty bin, this is being passed over.")
         else:
             #geoc=geometric_center(binlist[bindex])
-            geoc,mass=weighted_centroid(binlist[bindex],unweightedSN)
-            if np.isnan(mass) or mass==0:
+            geoc,mass=weighted_centroid(binlist[bindex],unweightedmass)
+            if(np.isnan(geoc[0]) or np.isnan(geoc[1])) or np.isnan(mass) or mass==0:
+                print("issue but we keep on trucking")
                 geoc=geometric_center(binlist[bindex])
             #geoc=geometric_center(binlist[bindex])
             geomcentres.append(geoc)
@@ -219,6 +221,7 @@ def generate_wvt3(binlist,signal,var,scalearray,maxx=-1,displayWVT=False):
                     print("StoN is for this bin: "+str(ston[binn[0][0]][binn[0][1]]))
                     print("scale for this bin: "+str(scalearray[bint]))
                     print("index for this: "+str(bint))
+                    print("density for this: "+str(ston[binn[0][0]][binn[0][1]]/len(binn)))
                     break
         cursor=Cursor(ax, horizOn=False,vertOn=False,color='red',linewidth=2.0)
         fig.canvas.mpl_connect('button_press_event',onclick)
@@ -229,3 +232,15 @@ def generate_wvt3(binlist,signal,var,scalearray,maxx=-1,displayWVT=False):
         fig.colorbar(image)
         plt.show()
     return wvt, ston 
+
+def justshow(signal):
+    fig,ax=plt.subplots()
+    image=ax.imshow(signal,cmap="cubehelix",origin="lower")
+    fig.colorbar(image)
+    plt.show()
+
+if __name__ == "__main__":
+    signal=np.full((4,4),1)
+    var=np.full((4,4),0.1)
+    binlist=[[(3,0),(3,1)],[(2,2),(2,3),(3,2),(3,3)],[(2,0),(2,1),(1,0),(1,1),(0,0),(0,1)],[(1,2)],[(0,2),(0,3),(1,3)]]
+    generate_wvt3(binlist,signal,var,[1,1,1,1,1],maxx=-1,displayWVT=False)

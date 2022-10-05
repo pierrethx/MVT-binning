@@ -1,5 +1,5 @@
-## Adaptive-Binning
-# Modified Adaptive Binning Methods
+## pierrethx/Adaptive-Binning
+# MBin: Modified Adaptive Binning Methods
 Pierre Thibodeaux at University of California, Santa Barbara
 under the guidance of Dr. Crystal Martin
 
@@ -8,6 +8,12 @@ We present a set of codes for adaptively binning 2D intensity maps to form less-
 Here, we treat the negative signal like zero signal during the binning, and then apply the formulated bins to the real data. This is based on the assumption that the positive and negative noise will be distributed approximately evenly in the bins and should cancel out when large enough bins are formed.
 
 There are two stages of Adaptive Binning: Bin Accretion, which was created in Cappellari and Copin (2003), and Iteration, where the bins formed are regularized, the SNR is equalized between bins. Our method also masks bins which do not sufficiently form SNR, and bases the cutoff value on the shape of the SNR histogram over the images.
+
+## Versions
+July 2022
+Version 1.0: Cleanup and consolodation of codes. First official version of code. 
+5 October 2022
+Version 1.1: Change in the cutoff method from defaultly finding minimum to finding maximum or secondary maximum, then tracking left to find minimum. Change in the 2-stage WVT method to mark the transition from high SNR to low SNR using "SNR density" as opposed to SNR. Addition of original.py script, minor modifications to testsuite.py, addition of license.
 
 ## Quickstart
 Place all unbinned signal and variance files in a directory titled "unbinned" inside the desired file location. Run main.py on these files, and their outputs will be deposited in directories that are parallel to "unbinned", according to their target SNR. This program is best run in an astroconda (https://astroconda.readthedocs.io/en/latest/) virtual environment of Python 3.
@@ -63,4 +69,30 @@ This program outputs a variety of files:
 
 **test_vorbin.py** is a script that is to be used with Cappellari's VorBin package (https://pypi.org/project/vorbin/). It converts .fits file inputs into txt files compatible with the input files of the VorBin code and converts its output back into .fits files.
 
+**original.py** implements main.py but disabling the mask and applying a minimum input SNR, in order to replicate Cappellari and Copin's CVT and Diehl and Statler's WVT methods but using the machinery of our code. We use this to directly compare our method to the "originals".
+
 **testsuite.py** generates a pair of graphs which show SNR, bin roundness (as defined in Diehl and Statler 2006), and bin size as a function of radius. This is used for the visualization of how these parameters change over the image.
+
+## License
+
+MIT License
+
+Copyright (c) 2022 Pierre Thibodeaux
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

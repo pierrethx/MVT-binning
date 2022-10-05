@@ -4,7 +4,7 @@ from astropy.io import fits
 import functions
 import scipy.spatial as sp
 
-def iteration_moderator(target,signal,var,geocarray,scalearray,epsilon,mode,display=False):
+def iteration_moderator(target,signal,var,geocarray,scalearray,epsilon,minsize,incidence,mode,display=False):
     if mode=="WVT2s":
         ## WVT2s requires different iteration behavior
         ## we form bins as usual
@@ -12,16 +12,18 @@ def iteration_moderator(target,signal,var,geocarray,scalearray,epsilon,mode,disp
         mask=np.full_like(signal,1)
         binlist,init_generators,init_scalelengths=next_iteration(target,signal,var,geocarray,scalearray,"VT",mask)
         ## now we save the internal bins that do not need iteration
-        mask,savebins,savegeoc,othergenerators,otherscalelengths=maskbins(binlist,signal,target,init_scalelengths,init_generators)
+        mask,savebins,savegeoc,othergenerators,otherscalelengths=maskbins(binlist,minsize,incidence,signal,var,target,init_generators)
         if np.sum(mask)==0:
             ## there is no outside bins so we just return internal bins
             print("No outside bins formed. Inside bins left uniterated.")
-            return binlist,[0,0]
+            return binlist,[]
         ## now iterate outside bins
         otherbinlist,diflist=iteration_func(target,signal,var,othergenerators,otherscalelengths,epsilon,mode,display,mask=mask)
         ## and combine
         binlist=savebins+otherbinlist
         return binlist,diflist
+    elif mode=="VT":
+        return iteration_func(target,signal,var,geocarray,scalearray,-1,mode,display)
     else:
         return iteration_func(target,signal,var,geocarray,scalearray,epsilon,mode,display)
 
@@ -30,7 +32,7 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon,mode,display=F
     if mask is None:
         mask=np.full_like(signal,1)
 
-    ## have to manually kill terminal is does not converge
+    ## have to manually kill terminal if does not converge
     difference=2*epsilon
     diflist=[]
     repeat=True
@@ -62,6 +64,8 @@ def iteration_func(target,signal,var,geocarray,scalearray,epsilon,mode,display=F
 def next_iteration(target,signal,var,geocarray,scalearray,mode,mask):
     ## generate all of the pixels to be slotted into a bin determined by the generators
     
+    unmask=np.full_like(mask,1)
+
     assign=np.full_like(signal,-1,dtype=int)
     viable=[]
     for g in range(len(geocarray)):
@@ -74,10 +78,10 @@ def next_iteration(target,signal,var,geocarray,scalearray,mode,mask):
             print(g)
             raise NameError("ouchie!")
         viable.append([])
-        append_validate((point[0]+1,point[1]),viable[g],mask)
-        append_validate((point[0]-1,point[1]),viable[g],mask)
-        append_validate((point[0],point[1]+1),viable[g],mask)
-        append_validate((point[0],point[1]-1),viable[g],mask)
+        append_validate((point[0]+1,point[1]),viable[g],unmask)
+        append_validate((point[0]-1,point[1]),viable[g],unmask)
+        append_validate((point[0],point[1]+1),viable[g],unmask)
+        append_validate((point[0],point[1]-1),viable[g],unmask)
         #print(str(int(g*100/len(geocarray)))+" percent done with init pass")
     while checkneg(assign*mask) or viabunempty(viable):
         for g in range(len(geocarray)):
@@ -91,23 +95,23 @@ def next_iteration(target,signal,var,geocarray,scalearray,mode,mask):
             if len(viable[g])>0:
                 if assign[point[0]][point[1]]==-1:
                     assign[point[0]][point[1]]=g
-                    append_validate((point[0]+1,point[1]),viable[g],mask)
-                    append_validate((point[0]-1,point[1]),viable[g],mask)
-                    append_validate((point[0],point[1]+1),viable[g],mask)
-                    append_validate((point[0],point[1]-1),viable[g],mask)
+                    append_validate((point[0]+1,point[1]),viable[g],unmask)
+                    append_validate((point[0]-1,point[1]),viable[g],unmask)
+                    append_validate((point[0],point[1]+1),viable[g],unmask)
+                    append_validate((point[0],point[1]-1),viable[g],unmask)
                 else:
                     if ((geocarray[g][0]-point[0])**2+(geocarray[g][1]-point[1])**2)/(scalearray[g]**2)<((geocarray[assign[point[0]][point[1]]][0]-point[0])**2+(geocarray[assign[point[0]][point[1]]][1]-point[1])**2)/(scalearray[assign[point[0]][point[1]]]**2):
                         assign[point[0]][point[1]]=g
-                        append_validate((point[0]+1,point[1]),viable[g],mask)
-                        append_validate((point[0]-1,point[1]),viable[g],mask)
-                        append_validate((point[0],point[1]+1),viable[g],mask)
-                        append_validate((point[0],point[1]-1),viable[g],mask)
+                        append_validate((point[0]+1,point[1]),viable[g],unmask)
+                        append_validate((point[0]-1,point[1]),viable[g],unmask)
+                        append_validate((point[0],point[1]+1),viable[g],unmask)
+                        append_validate((point[0],point[1]-1),viable[g],unmask)
                     else:
                         pass
     binlist=[ [] for _ in range(len(geocarray)) ]
     for j in range(len(assign)):
         for i in range(len(assign[0])):
-            if assign[j][i]!=-1:
+            if assign[j][i]!=-1 and mask[j][i]==1:
                 binlist[assign[j][i]].append((j,i))
 
     if mode=="CVT":
@@ -144,26 +148,44 @@ def append_validate(candidate,target,check):
     except:
         pass
 
-def maskbins(binlist,sig,target,scales,geoc):
+def maskbins(binlist,minsize,incidence,sig,var,target,geoc):
     ## for use in the WVT 2 stage method. Makes every bin less than cutpff outisde bin, which are iterated
     ## every bin greater than cutpff inside bin, which are not iterated
-    init_SN=np.array([len(binlist[i])*target/(3.14*scales[i]**2) for i in range(len(scales))])
+    init_SN=np.array([functions.calculate_SN(binlist[i],sig,var) for i in range(len(binlist))])
+
+    
     ## can be modified relative to the target value
-    cutpff=1*target
+    ## density. above this, we generally would assume that there arent many negative pixels dragging down
+    cutpff=1*target/minsize
+    print(cutpff)
     mask=np.full_like(sig,1)
     savebins=[]
     savegeoc=[]
+
+    basicSNsum=0
+    otherSN=[]
     otherscales=[]
     othergeoc=[]
     for i in range(len(binlist)):
-        if init_SN[i]>=cutpff:
+        #print(init_SN[i]/len(binlist[i]))
+        if init_SN[i]/len(binlist[i])>=cutpff:
             savebins.append(binlist[i])
             savegeoc.append((geoc[i][0],geoc[i][1]))
             for (y,x) in binlist[i]:
                 mask[y][x]=0
         else:
-            otherscales.append(scales[i])
+            otherSN.append(init_SN[i])
+            otherscales.append(np.sqrt(target*len(binlist[i])/(3.14*init_SN[i])))
             othergeoc.append((geoc[i][0],geoc[i][1]))
+    if len(otherSN)>1:
+        removal=int((len(otherSN)-1)*incidence)+1
+        otherSN=np.array(otherSN)
+        otherscales=np.array(otherSN)
+        othergeoc=np.array(othergeoc)
+        indices=np.argsort(otherSN) 
+        otherscales=otherscales[indices[removal:]]
+        othergeoc=othergeoc[indices[removal:]]
     ## returns mask (1 is use, 0 is not use), the list of saved bins, the list of saved inside generators,
     ## and the outside generators and scales (for iteration)
+    ## except we remove the lower some% of bins, since we expect some amount of noise so we generally want bigger bins
     return mask,savebins,savegeoc,othergeoc,otherscales

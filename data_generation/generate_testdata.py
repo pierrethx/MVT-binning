@@ -169,14 +169,20 @@ def gentestcases(num,wp,hp,frames,params,destination,subfolder,objname,mode=True
 
 
 if __name__ == "__main__":
-    frames=10000
+    frames=1000
     widpix=160
     heipix=160
-    destination="/Volumes/TOSHIBA EXT/MARTIN2/tupletest/"
+    destination="/Volumes/TOSHIBA EXT/MARTIN2/porttest/"
     
+    '''
     cases = { "sig": [1,10,100,1000,10000], "rcore": [16], "beta":[0.67], "bg":[0.01,0.1,1,10,100], "edge":[75]}
     genprof(10,widpix,heipix,frames,cases,destination,"123test","testdata","sig","edge",pairings=[("sig","bg")])
+    
     cases = { "sig": [10], "rcore": [4,8,12,16,20], "beta":[0.67,1.17,1.67,2.17,2.67,3.17], "bg":[0.01], "edge":[75]}
     genprof(1,widpix,heipix,frames,cases,destination,"betatest","testdata","beta","rcore")
 
     gentestcases(1,widpix,heipix,frames,[5,48,10],destination,"testcases","testcase",mode=False)
+    '''
+
+    cases = { "sig": [1], "rcore": [10], "beta":[0.67], "bg":[0.01], "edge":[70]}
+    genprof(10,widpix,heipix,frames,cases,destination,"beta1.17","testdata","sig","edge")

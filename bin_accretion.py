@@ -7,7 +7,7 @@ from astropy.io import fits
 import scipy.spatial as sp
 from astropy import wcs
 import os
-import functions
+import functions,wvt_iteration
 
 def gettarget(initial=0):
     ## for getting the target StoN from user
@@ -47,10 +47,14 @@ def getmulttarget(initial=0):
         print(targets)
     return targets
 
-def makesubfolder(sourcedir,target):
+def makesubfolder(sourcedir,target,tag=None):
     subfolder="target"+str(round(target,5)).strip("0").strip(".")
     try:
-        os.mkdir(sourcedir+"/"+subfolder)
+        if tag==None:
+            os.mkdir(sourcedir+"/"+subfolder)
+        else:
+            subfolder=subfolder+"_"+tag
+            os.mkdir(sourcedir+"/"+subfolder)
     except:
         pass
         print("already exists")
@@ -322,8 +326,7 @@ def cc_accretion(signal,var,target,minsize,mode,mask=None,display=False):
     ## we set up an assignment array to easier check bin loyalties for pixels
     assign=np.full_like(ston,-1)
             
-    ## density is defined in CC03 as SN squared, sign unimportant since CC03 uses pos data,
-    ##  above def would preserve sign, but it doesnt seem like this makes binnings better
+    ## density is defined in CC03 as SN squared, sign unimportant since CC03 uses pos data
     density=ston*ston
     cellsleft=np.count_nonzero(assign == -1)
     print(cellsleft)
@@ -346,13 +349,19 @@ def cc_accretion(signal,var,target,minsize,mode,mask=None,display=False):
     ## as we add pixels to new bin, we check to see if accretion continues, then add adj pixels to viablecell
     ## we choose new pixels to add to the bin from viablecell
     ## once bin accretion stops (violates conditions), viablecell is merged into viable and a new pixel is selected to start next bin
-    while len(viable)>0:
+    rep=True
+    normal=True
+    while rep:
         ## picking new point to start next bin
-        centroid=functions.closest_point(supercentroid,viable,density)
+        if normal:
+            centroid=functions.closest_point(supercentroid,viable,density)
+            viable.remove(centroid)
+        else:
+            normal=True
+            centroid=tuple(np.argwhere(assign*mask == -1)[0])
         ## begin with empty cell. Add pixel to new cell and remove from viable
         current=[]
         current.append(centroid)
-        viable.remove(centroid)
         assign[centroid[0]][centroid[1]]=0
         ## introduce list of candidates for bin and populate with adjacent cell, checking to see if it is already assigned
         viablecell=[]
@@ -386,10 +395,10 @@ def cc_accretion(signal,var,target,minsize,mode,mask=None,display=False):
                 binmass=nmass
                 centroid=ncentroid
                 ## then add new pixels to viablecell for continued accretion
-                validateappend(viablecell,(nextpoint[0]+1,nextpoint[1]),assign)
-                validateappend(viablecell,(nextpoint[0]-1,nextpoint[1]),assign)
-                validateappend(viablecell,(nextpoint[0],nextpoint[1]+1),assign)
-                validateappend(viablecell,(nextpoint[0],nextpoint[1]-1),assign)
+                validateappend(viablecell,(nextpoint[0]+1,nextpoint[1]),assign*mask)
+                validateappend(viablecell,(nextpoint[0]-1,nextpoint[1]),assign*mask)
+                validateappend(viablecell,(nextpoint[0],nextpoint[1]+1),assign*mask)
+                validateappend(viablecell,(nextpoint[0],nextpoint[1]-1),assign*mask)
                 accrete= len(viablecell)>0
             else: 
                 ## or, we have chosen to end accretion and exit the loop for this bin
@@ -411,7 +420,13 @@ def cc_accretion(signal,var,target,minsize,mode,mask=None,display=False):
             supercentroid=((supercentroid[0]*supermass+centroid[0]*binmass)/(supermass+binmass),(supercentroid[1]*supermass+centroid[1]*binmass)/(supermass+binmass))
         supermass=supermass+binmass
         viable.extend([v for v in viablecell if not v in viable])
-        print(np.count_nonzero(assign == -1))
+        
+        if(len(viable)==0):
+            if wvt_iteration.checkneg(assign*mask):
+                normal=False
+            else:
+                rep=False
+        print(np.count_nonzero(assign*mask == -1))
 
     print("Redistribution time")
 
@@ -430,7 +445,7 @@ def cc_accretion(signal,var,target,minsize,mode,mask=None,display=False):
         binlist,geocarray,scalearray=functions.calculate_scales(target,binlist,signal,var)
    
     if display:
-        wvt,ston=functions.generate_wvt3(binlist,signal,var,scalearray,10,True)
+        wvt,ston=functions.generate_wvt3(binlist,signal*mask,var,scalearray,10,True)
     
     return binlist,geocarray,scalearray
  
