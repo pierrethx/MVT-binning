@@ -1,5 +1,5 @@
-## pierrethx/Adaptive-Binning
-# MBin: Modified Adaptive Binning Methods
+## pierrethx/MVT-bin
+# MVT-bin: Modified Adaptive Binning Methods
 Pierre Thibodeaux at University of California, Santa Barbara
 under the guidance of Dr. Crystal Martin
 
