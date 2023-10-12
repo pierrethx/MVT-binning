@@ -13,6 +13,7 @@ There are two stages of Adaptive Binning: Bin Accretion, which was created in Ca
 July 2022
 
 Version 1.0: Cleanup and consolodation of codes. First official version of code. 
+
 5 October 2022
 
 Version 1.1: Change in the cutoff method from defaultly finding minimum to finding maximum or secondary maximum, then tracking left to find minimum. Change in the 2-stage WVT method to mark the transition from high SNR to low SNR using "SNR density" as opposed to SNR. Addition of original.py script, minor modifications to testsuite.py, addition of license.
